@@ -90,9 +90,9 @@ pub async fn api_error(provider: &str, response: reqwest::Response) -> anyhow::E
     let body = response
         .text()
         .await
-        .unwrap_or_else(|_| "<failed to read provider error body>".to_string());
+        .unwrap_or_else(|_| "<读取 Provider 错误响应体失败>".to_string());
     let sanitized = sanitize_api_error(&body);
-    anyhow::anyhow!("{provider} API error ({status}): {sanitized}")
+    anyhow::anyhow!("{provider} API 错误 ({status}): {sanitized}")
 }
 
 /// Resolve API key for a provider from config and environment variables.
@@ -246,7 +246,7 @@ pub fn create_provider(name: &str, api_key: Option<&str>) -> anyhow::Result<Box<
         name if name.starts_with("custom:") => {
             let base_url = name.strip_prefix("custom:").unwrap_or("");
             if base_url.is_empty() {
-                anyhow::bail!("Custom provider requires a URL. Format: custom:https://your-api.com");
+                anyhow::bail!("自定义 Provider 需要提供 URL。格式: custom:https://your-api.com");
             }
             Ok(Box::new(OpenAiCompatibleProvider::new(
                 "Custom",
@@ -261,7 +261,7 @@ pub fn create_provider(name: &str, api_key: Option<&str>) -> anyhow::Result<Box<
         name if name.starts_with("anthropic-custom:") => {
             let base_url = name.strip_prefix("anthropic-custom:").unwrap_or("");
             if base_url.is_empty() {
-                anyhow::bail!("Anthropic-custom provider requires a URL. Format: anthropic-custom:https://your-api.com");
+                anyhow::bail!("Anthropic 自定义 Provider 需要提供 URL。格式: anthropic-custom:https://your-api.com");
             }
             Ok(Box::new(anthropic::AnthropicProvider::with_base_url(
                 api_key, Some(base_url),
@@ -269,9 +269,9 @@ pub fn create_provider(name: &str, api_key: Option<&str>) -> anyhow::Result<Box<
         }
 
         _ => anyhow::bail!(
-            "Unknown provider: {name}. Check README for supported providers or run `jarvis onboard --interactive` to reconfigure.\n\
-             Tip: Use \"custom:https://your-api.com\" for OpenAI-compatible endpoints.\n\
-             Tip: Use \"anthropic-custom:https://your-api.com\" for Anthropic-compatible endpoints."
+            "未知的 Provider: {name}。请查阅 README 获取支持的 Provider 列表，或运行 `jarvis onboard --interactive` 重新配置。\n\
+             提示: 使用 \"custom:https://your-api.com\" 连接 OpenAI 兼容端点。\n\
+             提示: 使用 \"anthropic-custom:https://your-api.com\" 连接 Anthropic 兼容端点。"
         ),
     }
 }
@@ -298,18 +298,15 @@ pub fn create_resilient_provider(
             tracing::warn!(
                 fallback_provider = fallback,
                 primary_provider = primary_name,
-                "Fallback provider will use the primary provider's API key — \
-                 this will fail if the providers require different keys"
+                "备用 Provider 将使用主 Provider 的 API key — \
+                 如果两者需要不同的密钥，则会失败"
             );
         }
 
         match create_provider(fallback, api_key) {
             Ok(provider) => providers.push((fallback.clone(), provider)),
             Err(e) => {
-                tracing::warn!(
-                    fallback_provider = fallback,
-                    "Ignoring invalid fallback provider: {e}"
-                );
+                tracing::warn!(fallback_provider = fallback, "忽略无效的备用 Provider: {e}");
             }
         }
     }
@@ -500,8 +497,8 @@ mod tests {
     fn factory_custom_empty_url_errors() {
         match create_provider("custom:", None) {
             Err(e) => assert!(
-                e.to_string().contains("requires a URL"),
-                "Expected 'requires a URL', got: {e}"
+                e.to_string().contains("需要提供 URL"),
+                "Expected '需要提供 URL', got: {e}"
             ),
             Ok(_) => panic!("Expected error for empty custom URL"),
         }
@@ -531,8 +528,8 @@ mod tests {
     fn factory_anthropic_custom_empty_url_errors() {
         match create_provider("anthropic-custom:", None) {
             Err(e) => assert!(
-                e.to_string().contains("requires a URL"),
-                "Expected 'requires a URL', got: {e}"
+                e.to_string().contains("需要提供 URL"),
+                "Expected '需要提供 URL', got: {e}"
             ),
             Ok(_) => panic!("Expected error for empty anthropic-custom URL"),
         }
@@ -545,7 +542,7 @@ mod tests {
         let p = create_provider("nonexistent", None);
         assert!(p.is_err());
         let msg = p.err().unwrap().to_string();
-        assert!(msg.contains("Unknown provider"));
+        assert!(msg.contains("未知的 Provider"));
         assert!(msg.contains("nonexistent"));
     }
 

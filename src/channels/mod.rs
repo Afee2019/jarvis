@@ -54,13 +54,13 @@ fn spawn_supervised_listener(
 
             match result {
                 Ok(()) => {
-                    tracing::warn!("Channel {} exited unexpectedly; restarting", ch.name());
-                    crate::health::mark_component_error(&component, "listener exited unexpectedly");
+                    tracing::warn!("通道 {} 意外退出，正在重启", ch.name());
+                    crate::health::mark_component_error(&component, "监听器意外退出");
                     // Clean exit — reset backoff since the listener ran successfully
                     backoff = initial_backoff_secs.max(1);
                 }
                 Err(e) => {
-                    tracing::error!("Channel {} error: {e}; restarting", ch.name());
+                    tracing::error!("通道 {} 出错: {e}，正在重启", ch.name());
                     crate::health::mark_component_error(&component, e.to_string());
                 }
             }
@@ -230,14 +230,14 @@ fn inject_workspace_file(prompt: &mut String, workspace_dir: &std::path::Path, f
 pub fn handle_command(command: crate::ChannelCommands, config: &Config) -> Result<()> {
     match command {
         crate::ChannelCommands::Start => {
-            anyhow::bail!("Start must be handled in main.rs (requires async runtime)")
+            anyhow::bail!("Start 必须在 main.rs 中处理（需要异步运行时）")
         }
         crate::ChannelCommands::Doctor => {
-            anyhow::bail!("Doctor must be handled in main.rs (requires async runtime)")
+            anyhow::bail!("Doctor 必须在 main.rs 中处理（需要异步运行时）")
         }
         crate::ChannelCommands::List => {
-            println!("Channels:");
-            println!("  ✅ CLI (always available)");
+            println!("通道列表:");
+            println!("  ✅ CLI（始终可用）");
             for (name, configured) in [
                 ("Telegram", config.channels_config.telegram.is_some()),
                 ("Discord", config.channels_config.discord.is_some()),
@@ -250,21 +250,19 @@ pub fn handle_command(command: crate::ChannelCommands, config: &Config) -> Resul
             ] {
                 println!("  {} {name}", if configured { "✅" } else { "❌" });
             }
-            println!("\nTo start channels: jarvis channel start");
-            println!("To check health:    jarvis channel doctor");
-            println!("To configure:      jarvis onboard");
+            println!("\n启动通道:       jarvis channel start");
+            println!("检查健康状态:   jarvis channel doctor");
+            println!("配置通道:       jarvis onboard");
             Ok(())
         }
         crate::ChannelCommands::Add {
             channel_type,
             config: _,
         } => {
-            anyhow::bail!(
-                "Channel type '{channel_type}' — use `jarvis onboard` to configure channels"
-            );
+            anyhow::bail!("通道类型「{channel_type}」— 请使用 `jarvis onboard` 配置通道");
         }
         crate::ChannelCommands::Remove { name } => {
-            anyhow::bail!("Remove channel '{name}' — edit ~/.jarvis/config.toml directly");
+            anyhow::bail!("移除通道「{name}」— 请直接编辑 ~/.jarvis/config.toml");
         }
     }
 }
@@ -373,11 +371,11 @@ pub async fn doctor_channels(config: Config) -> Result<()> {
     }
 
     if channels.is_empty() {
-        println!("No real-time channels configured. Run `jarvis onboard` first.");
+        println!("未配置实时通道。请先运行 `jarvis onboard`。");
         return Ok(());
     }
 
-    println!("🩺 Jarvis Channel Doctor");
+    println!("🩺 Jarvis 通道诊断");
     println!();
 
     let mut healthy = 0_u32;
@@ -391,25 +389,25 @@ pub async fn doctor_channels(config: Config) -> Result<()> {
         match state {
             ChannelHealthState::Healthy => {
                 healthy += 1;
-                println!("  ✅ {name:<9} healthy");
+                println!("  ✅ {name:<9} 健康");
             }
             ChannelHealthState::Unhealthy => {
                 unhealthy += 1;
-                println!("  ❌ {name:<9} unhealthy (auth/config/network)");
+                println!("  ❌ {name:<9} 不健康（认证/配置/网络问题）");
             }
             ChannelHealthState::Timeout => {
                 timeout += 1;
-                println!("  ⏱️  {name:<9} timed out (>10s)");
+                println!("  ⏱️  {name:<9} 超时（>10秒）");
             }
         }
     }
 
     if config.channels_config.webhook.is_some() {
-        println!("  ℹ️  Webhook   check via `jarvis gateway` then GET /health");
+        println!("  ℹ️  Webhook   请通过 `jarvis gateway` 启动后 GET /health 检查");
     }
 
     println!();
-    println!("Summary: {healthy} healthy, {unhealthy} unhealthy, {timeout} timed out");
+    println!("汇总: {healthy} 健康, {unhealthy} 不健康, {timeout} 超时");
     Ok(())
 }
 
@@ -425,7 +423,7 @@ pub async fn start_channels(config: Config) -> Result<()> {
     // Warm up the provider connection pool (TLS handshake, DNS, HTTP/2 setup)
     // so the first real message doesn't hit a cold-start timeout.
     if let Err(e) = provider.warmup().await {
-        tracing::warn!("Provider warmup failed (non-fatal): {e}");
+        tracing::warn!("Provider 预热失败（非致命）: {e}");
     }
 
     let model = config
@@ -482,7 +480,7 @@ pub async fn start_channels(config: Config) -> Result<()> {
 
     if !skills.is_empty() {
         println!(
-            "  🧩 Skills:   {}",
+            "  🧩 技能:    {}",
             skills
                 .iter()
                 .map(|s| s.name.as_str())
@@ -555,19 +553,23 @@ pub async fn start_channels(config: Config) -> Result<()> {
     }
 
     if channels.is_empty() {
-        println!("No channels configured. Run `jarvis onboard` to set up channels.");
+        println!("未配置通道。请运行 `jarvis onboard` 设置通道。");
         return Ok(());
     }
 
-    println!("🤖 Jarvis Channel Server");
-    println!("  🤖 Model:    {model}");
+    println!("🤖 Jarvis 通道服务器");
+    println!("  🤖 模型:    {model}");
     println!(
-        "  🧠 Memory:   {} (auto-save: {})",
+        "  🧠 记忆:    {} (自动保存: {})",
         config.memory.backend,
-        if config.memory.auto_save { "on" } else { "off" }
+        if config.memory.auto_save {
+            "开"
+        } else {
+            "关"
+        }
     );
     println!(
-        "  📡 Channels: {}",
+        "  📡 通道:    {}",
         channels
             .iter()
             .map(|c| c.name())
@@ -575,7 +577,7 @@ pub async fn start_channels(config: Config) -> Result<()> {
             .join(", ")
     );
     println!();
-    println!("  Listening for messages... (Ctrl+C to stop)");
+    println!("  正在监听消息... (Ctrl+C 停止)");
     println!();
 
     crate::health::mark_component_ok("channels");
@@ -607,7 +609,7 @@ pub async fn start_channels(config: Config) -> Result<()> {
     // Process incoming messages — call the LLM and reply
     while let Some(msg) = rx.recv().await {
         println!(
-            "  💬 [{}] from {}: {}",
+            "  💬 [{}] 来自 {}: {}",
             msg.channel,
             msg.sender,
             truncate_with_ellipsis(&msg.content, 80)
@@ -630,19 +632,19 @@ pub async fn start_channels(config: Config) -> Result<()> {
             .await
         {
             Ok(response) => {
-                println!("  🤖 Reply: {}", truncate_with_ellipsis(&response, 80));
+                println!("  🤖 回复: {}", truncate_with_ellipsis(&response, 80));
                 // Find the channel that sent this message and reply
                 for ch in &channels {
                     if ch.name() == msg.channel {
                         if let Err(e) = ch.send(&response, &msg.sender).await {
-                            eprintln!("  ❌ Failed to reply on {}: {e}", ch.name());
+                            eprintln!("  ❌ 在 {} 上回复失败: {e}", ch.name());
                         }
                         break;
                     }
                 }
             }
             Err(e) => {
-                eprintln!("  ❌ LLM error: {e}");
+                eprintln!("  ❌ LLM 错误: {e}");
                 for ch in &channels {
                     if ch.name() == msg.channel {
                         let _ = ch.send(&format!("⚠️ Error: {e}"), &msg.sender).await;

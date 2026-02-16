@@ -99,7 +99,7 @@ impl Channel for IMessageChannel {
         // Defense-in-depth: validate target format before any interpolation
         if !is_valid_imessage_target(target) {
             anyhow::bail!(
-                "Invalid iMessage target: must be a phone number (+1234567890) or email (user@example.com)"
+                "无效的 iMessage 目标: 必须是手机号码 (+1234567890) 或邮箱 (user@example.com)"
             );
         }
 
@@ -124,24 +124,24 @@ end tell"#
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!("iMessage send failed: {stderr}");
+            anyhow::bail!("iMessage 发送失败: {stderr}");
         }
 
         Ok(())
     }
 
     async fn listen(&self, tx: mpsc::Sender<ChannelMessage>) -> anyhow::Result<()> {
-        tracing::info!("iMessage channel listening (AppleScript bridge)...");
+        tracing::info!("iMessage 通道正在监听（AppleScript 桥接）...");
 
         // Query the Messages SQLite database for new messages
         // The database is at ~/Library/Messages/chat.db
         let db_path = UserDirs::new()
             .map(|u| u.home_dir().join("Library/Messages/chat.db"))
-            .ok_or_else(|| anyhow::anyhow!("Cannot find home directory"))?;
+            .ok_or_else(|| anyhow::anyhow!("无法找到主目录"))?;
 
         if !db_path.exists() {
             anyhow::bail!(
-                "Messages database not found at {}. Ensure Messages.app is set up and Full Disk Access is granted.",
+                "在 {} 未找到消息数据库。请确保 Messages.app 已设置且已授予「完全磁盘访问」权限。",
                 db_path.display()
             );
         }
@@ -186,7 +186,7 @@ end tell"#
                     }
                 }
                 Err(e) => {
-                    tracing::warn!("iMessage poll error: {e}");
+                    tracing::warn!("iMessage 轮询出错: {e}");
                 }
             }
         }

@@ -22,31 +22,31 @@ impl BrowserOpenTool {
         let url = raw_url.trim();
 
         if url.is_empty() {
-            anyhow::bail!("URL cannot be empty");
+            anyhow::bail!("URL 不能为空");
         }
 
         if url.chars().any(char::is_whitespace) {
-            anyhow::bail!("URL cannot contain whitespace");
+            anyhow::bail!("URL 不能包含空白字符");
         }
 
         if !url.starts_with("https://") {
-            anyhow::bail!("Only https:// URLs are allowed");
+            anyhow::bail!("仅允许 https:// URL");
         }
 
         if self.allowed_domains.is_empty() {
             anyhow::bail!(
-                "Browser tool is enabled but no allowed_domains are configured. Add [browser].allowed_domains in config.toml"
+                "浏览器工具已启用，但未配置 allowed_domains。请在 config.toml 中添加 [browser].allowed_domains"
             );
         }
 
         let host = extract_host(url)?;
 
         if is_private_or_local_host(&host) {
-            anyhow::bail!("Blocked local/private host: {host}");
+            anyhow::bail!("已阻止本地/私有主机: {host}");
         }
 
         if !host_matches_allowlist(&host, &self.allowed_domains) {
-            anyhow::bail!("Host '{host}' is not in browser.allowed_domains");
+            anyhow::bail!("主机「{host}」不在 browser.allowed_domains 中");
         }
 
         Ok(url.to_string())
@@ -80,13 +80,13 @@ impl Tool for BrowserOpenTool {
         let url = args
             .get("url")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing 'url' parameter"))?;
+            .ok_or_else(|| anyhow::anyhow!("缺少「url」参数"))?;
 
         if !self.security.can_act() {
             return Ok(ToolResult {
                 success: false,
                 output: String::new(),
-                error: Some("Action blocked: autonomy is read-only".into()),
+                error: Some("操作被阻止: 自主级别为只读".into()),
             });
         }
 
@@ -94,7 +94,7 @@ impl Tool for BrowserOpenTool {
             return Ok(ToolResult {
                 success: false,
                 output: String::new(),
-                error: Some("Action blocked: rate limit exceeded".into()),
+                error: Some("操作被阻止: 超出速率限制".into()),
             });
         }
 
@@ -112,13 +112,13 @@ impl Tool for BrowserOpenTool {
         match open_in_brave(&url).await {
             Ok(()) => Ok(ToolResult {
                 success: true,
-                output: format!("Opened in Brave: {url}"),
+                output: format!("已在 Brave 浏览器中打开: {url}"),
                 error: None,
             }),
             Err(e) => Ok(ToolResult {
                 success: false,
                 output: String::new(),
-                error: Some(format!("Failed to open Brave Browser: {e}")),
+                error: Some(format!("打开 Brave 浏览器失败: {e}")),
             }),
         }
     }
@@ -141,9 +141,7 @@ async fn open_in_brave(url: &str) -> anyhow::Result<()> {
                 }
             }
         }
-        anyhow::bail!(
-            "Brave Browser was not found (tried macOS app names 'Brave Browser' and 'Brave')"
-        );
+        anyhow::bail!("未找到 Brave 浏览器（已尝试 macOS 应用名「Brave Browser」和「Brave」）");
     }
 
     #[cfg(target_os = "linux")]
@@ -180,7 +178,7 @@ async fn open_in_brave(url: &str) -> anyhow::Result<()> {
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     {
         let _ = url;
-        anyhow::bail!("browser_open is not supported on this OS");
+        anyhow::bail!("当前操作系统不支持 browser_open");
     }
 }
 
@@ -226,23 +224,23 @@ fn normalize_domain(raw: &str) -> Option<String> {
 fn extract_host(url: &str) -> anyhow::Result<String> {
     let rest = url
         .strip_prefix("https://")
-        .ok_or_else(|| anyhow::anyhow!("Only https:// URLs are allowed"))?;
+        .ok_or_else(|| anyhow::anyhow!("仅允许 https:// URL"))?;
 
     let authority = rest
         .split(['/', '?', '#'])
         .next()
-        .ok_or_else(|| anyhow::anyhow!("Invalid URL"))?;
+        .ok_or_else(|| anyhow::anyhow!("无效的 URL"))?;
 
     if authority.is_empty() {
-        anyhow::bail!("URL must include a host");
+        anyhow::bail!("URL 必须包含主机名");
     }
 
     if authority.contains('@') {
-        anyhow::bail!("URL userinfo is not allowed");
+        anyhow::bail!("URL 中不允许使用 userinfo");
     }
 
     if authority.starts_with('[') {
-        anyhow::bail!("IPv6 hosts are not supported in browser_open");
+        anyhow::bail!("browser_open 不支持 IPv6 主机");
     }
 
     let host = authority
@@ -254,7 +252,7 @@ fn extract_host(url: &str) -> anyhow::Result<String> {
         .to_lowercase();
 
     if host.is_empty() {
-        anyhow::bail!("URL must include a valid host");
+        anyhow::bail!("URL 必须包含有效的主机名");
     }
 
     Ok(host)
@@ -367,7 +365,7 @@ mod tests {
             .validate_url("https://localhost:8080")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("local/private"));
+        assert!(err.contains("本地/私有"));
     }
 
     #[test]
@@ -377,7 +375,7 @@ mod tests {
             .validate_url("https://192.168.1.5")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("local/private"));
+        assert!(err.contains("本地/私有"));
     }
 
     #[test]
@@ -397,7 +395,7 @@ mod tests {
             .validate_url("https://example.com/hello world")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("whitespace"));
+        assert!(err.contains("空白字符"));
     }
 
     #[test]
@@ -445,7 +443,7 @@ mod tests {
             .await
             .unwrap();
         assert!(!result.success);
-        assert!(result.error.unwrap().contains("read-only"));
+        assert!(result.error.unwrap().contains("只读"));
     }
 
     #[tokio::test]
@@ -460,6 +458,6 @@ mod tests {
             .await
             .unwrap();
         assert!(!result.success);
-        assert!(result.error.unwrap().contains("rate limit"));
+        assert!(result.error.unwrap().contains("速率限制"));
     }
 }

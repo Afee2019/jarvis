@@ -16,7 +16,7 @@
 快速、轻量、完全自主的 AI 助手基础设施 —— 随处部署，万物可换。
 
 ```
-~3.4MB 二进制 · <10ms 启动 · 1,017 个测试 · 22+ 提供商 · 8 个 trait · 一切皆可插拔
+~3.4MB 二进制 · <10ms 启动 · 1,020 个测试 · 22+ 提供商 · 8 个 trait · 一切皆可插拔
 ```
 
 ### ✨ 特性
@@ -85,13 +85,15 @@ jarvis agent -m "你好，Jarvis！"
 jarvis agent
 
 # 启动网关（webhook 服务器）
-jarvis gateway                # 默认：127.0.0.1:8080
+jarvis gateway                # 默认：127.0.0.1:8299
 jarvis gateway --port 0       # 随机端口（安全加固）
 
-# 启动完整自主运行时
+# 启动完整自主运行时（后台运行）
 jarvis daemon
+jarvis daemon --foreground    # 前台运行（调试用）
+jarvis daemon --stop          # 停止守护进程
 
-# 检查状态
+# 检查状态（含守护进程运行时信息）
 jarvis status
 
 # 运行系统诊断
@@ -239,7 +241,7 @@ WhatsApp 使用 Meta 的 Cloud API 和 webhook（推送模式，非轮询）：
 
 4. **启动带隧道的网关：**
    ```bash
-   jarvis gateway --port 8080
+   jarvis gateway --port 8299
    ```
    WhatsApp 要求 HTTPS，因此需要使用隧道（ngrok、Cloudflare、Tailscale Funnel）。
 
@@ -391,9 +393,11 @@ aieos_inline = '''
 | `onboard --channels-only` | 仅重新配置通道/白名单（快速修复流程） |
 | `agent -m "..."` | 单条消息模式 |
 | `agent` | 交互式聊天模式 |
-| `gateway` | 启动 webhook 服务器（默认：`127.0.0.1:8080`） |
+| `gateway` | 启动 webhook 服务器（默认：`127.0.0.1:8299`） |
 | `gateway --port 0` | 随机端口模式 |
-| `daemon` | 启动长时间运行的自主运行时 |
+| `daemon` | 启动长时间运行的自主运行时（后台运行） |
+| `daemon --foreground` | 前台运行守护进程（供 service/调试用） |
+| `daemon --stop` | 停止正在运行的守护进程 |
 | `service install/start/stop/status/uninstall` | 管理用户级后台服务 |
 | `doctor` | 诊断守护进程/调度器/通道状态 |
 | `status` | 显示完整系统状态 |
@@ -405,7 +409,7 @@ aieos_inline = '''
 ```bash
 cargo build              # 开发构建
 cargo build --release    # 发布构建（~3.4MB）
-cargo test               # 1,017 个测试
+cargo test               # 1,020 个测试
 cargo clippy             # Lint（0 warnings）
 cargo fmt                # 格式化
 

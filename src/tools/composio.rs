@@ -51,7 +51,7 @@ impl ComposioTool {
 
         if !resp.status().is_success() {
             let err = resp.text().await.unwrap_or_default();
-            anyhow::bail!("Composio API error: {err}");
+            anyhow::bail!("Composio API 错误: {err}");
         }
 
         let body: ComposioActionsResponse = resp.json().await?;
@@ -85,7 +85,7 @@ impl ComposioTool {
 
         if !resp.status().is_success() {
             let err = resp.text().await.unwrap_or_default();
-            anyhow::bail!("Composio action execution failed: {err}");
+            anyhow::bail!("Composio 操作执行失败: {err}");
         }
 
         let result: serde_json::Value = resp.json().await?;
@@ -115,7 +115,7 @@ impl ComposioTool {
 
         if !resp.status().is_success() {
             let err = resp.text().await.unwrap_or_default();
-            anyhow::bail!("Failed to get connection URL: {err}");
+            anyhow::bail!("获取连接 URL 失败: {err}");
         }
 
         let result: serde_json::Value = resp.json().await?;
@@ -123,7 +123,7 @@ impl ComposioTool {
             .get("redirectUrl")
             .and_then(|v| v.as_str())
             .map(String::from)
-            .ok_or_else(|| anyhow::anyhow!("No redirect URL in response"))
+            .ok_or_else(|| anyhow::anyhow!("响应中缺少 redirect URL"))
     }
 }
 
@@ -172,7 +172,7 @@ impl Tool for ComposioTool {
         let action = args
             .get("action")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing 'action' parameter"))?;
+            .ok_or_else(|| anyhow::anyhow!("缺少「action」参数"))?;
 
         let entity_id = args
             .get("entity_id")
@@ -198,10 +198,10 @@ impl Tool for ComposioTool {
                             .collect();
                         let total = actions.len();
                         let output = format!(
-                            "Found {total} available actions:\n{}{}",
+                            "找到 {total} 个可用操作:\n{}{}",
                             summary.join("\n"),
                             if total > 20 {
-                                format!("\n... and {} more", total - 20)
+                                format!("\n... 还有 {} 个", total - 20)
                             } else {
                                 String::new()
                             }
@@ -215,7 +215,7 @@ impl Tool for ComposioTool {
                     Err(e) => Ok(ToolResult {
                         success: false,
                         output: String::new(),
-                        error: Some(format!("Failed to list actions: {e}")),
+                        error: Some(format!("获取操作列表失败: {e}")),
                     }),
                 }
             }
@@ -224,7 +224,7 @@ impl Tool for ComposioTool {
                 let action_name = args
                     .get("action_name")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'action_name' for execute"))?;
+                    .ok_or_else(|| anyhow::anyhow!("execute 操作缺少「action_name」参数"))?;
 
                 let params = args.get("params").cloned().unwrap_or(json!({}));
 
@@ -244,7 +244,7 @@ impl Tool for ComposioTool {
                     Err(e) => Ok(ToolResult {
                         success: false,
                         output: String::new(),
-                        error: Some(format!("Action execution failed: {e}")),
+                        error: Some(format!("操作执行失败: {e}")),
                     }),
                 }
             }
@@ -253,18 +253,18 @@ impl Tool for ComposioTool {
                 let app = args
                     .get("app")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'app' for connect"))?;
+                    .ok_or_else(|| anyhow::anyhow!("connect 操作缺少「app」参数"))?;
 
                 match self.get_connection_url(app, entity_id).await {
                     Ok(url) => Ok(ToolResult {
                         success: true,
-                        output: format!("Open this URL to connect {app}:\n{url}"),
+                        output: format!("请打开以下 URL 连接 {app}:\n{url}"),
                         error: None,
                     }),
                     Err(e) => Ok(ToolResult {
                         success: false,
                         output: String::new(),
-                        error: Some(format!("Failed to get connection URL: {e}")),
+                        error: Some(format!("获取连接 URL 失败: {e}")),
                     }),
                 }
             }
@@ -273,7 +273,7 @@ impl Tool for ComposioTool {
                 success: false,
                 output: String::new(),
                 error: Some(format!(
-                    "Unknown action '{action}'. Use 'list', 'execute', or 'connect'."
+                    "Unknown action 未知操作「{action}」。可用操作: list、execute、connect。"
                 )),
             }),
         }

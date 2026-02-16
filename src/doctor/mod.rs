@@ -9,19 +9,19 @@ const CHANNEL_STALE_SECONDS: i64 = 300;
 pub fn run(config: &Config) -> Result<()> {
     let state_file = crate::daemon::state_file_path(config);
     if !state_file.exists() {
-        println!("🩺 Jarvis Doctor");
-        println!("  ❌ daemon state file not found: {}", state_file.display());
-        println!("  💡 Start daemon with: jarvis daemon");
+        println!("🩺 Jarvis 诊断");
+        println!("  ❌ 守护进程状态文件未找到: {}", state_file.display());
+        println!("  💡 启动守护进程: jarvis daemon");
         return Ok(());
     }
 
     let raw = std::fs::read_to_string(&state_file)
-        .with_context(|| format!("Failed to read {}", state_file.display()))?;
-    let snapshot: serde_json::Value = serde_json::from_str(&raw)
-        .with_context(|| format!("Failed to parse {}", state_file.display()))?;
+        .with_context(|| format!("读取失败 {}", state_file.display()))?;
+    let snapshot: serde_json::Value =
+        serde_json::from_str(&raw).with_context(|| format!("解析失败 {}", state_file.display()))?;
 
-    println!("🩺 Jarvis Doctor");
-    println!("  State file: {}", state_file.display());
+    println!("🩺 Jarvis 诊断");
+    println!("  状态文件: {}", state_file.display());
 
     let updated_at = snapshot
         .get("updated_at")
@@ -33,12 +33,12 @@ pub fn run(config: &Config) -> Result<()> {
             .signed_duration_since(ts.with_timezone(&Utc))
             .num_seconds();
         if age <= DAEMON_STALE_SECONDS {
-            println!("  ✅ daemon heartbeat fresh ({age}s ago)");
+            println!("  ✅ 守护进程心跳正常（{age}秒前）");
         } else {
-            println!("  ❌ daemon heartbeat stale ({age}s ago)");
+            println!("  ❌ 守护进程心跳过期（{age}秒前）");
         }
     } else {
-        println!("  ❌ invalid daemon timestamp: {updated_at}");
+        println!("  ❌ 守护进程时间戳无效: {updated_at}");
     }
 
     let mut channel_count = 0_u32;
@@ -63,14 +63,14 @@ pub fn run(config: &Config) -> Result<()> {
                 });
 
             if scheduler_ok && scheduler_last_ok <= SCHEDULER_STALE_SECONDS {
-                println!("  ✅ scheduler healthy (last ok {scheduler_last_ok}s ago)");
+                println!("  ✅ 调度器健康（上次正常 {scheduler_last_ok}秒前）");
             } else {
                 println!(
-                    "  ❌ scheduler unhealthy/stale (status_ok={scheduler_ok}, age={scheduler_last_ok}s)"
+                    "  ❌ 调度器异常/过期（status_ok={scheduler_ok}, age={scheduler_last_ok}s）"
                 );
             }
         } else {
-            println!("  ❌ scheduler component missing");
+            println!("  ❌ 调度器组件缺失");
         }
 
         for (name, component) in components {
@@ -92,18 +92,18 @@ pub fn run(config: &Config) -> Result<()> {
                 });
 
             if status_ok && age <= CHANNEL_STALE_SECONDS {
-                println!("  ✅ {name} fresh (last ok {age}s ago)");
+                println!("  ✅ {name} 正常（上次正常 {age}秒前）");
             } else {
                 stale_channels += 1;
-                println!("  ❌ {name} stale/unhealthy (status_ok={status_ok}, age={age}s)");
+                println!("  ❌ {name} 过期/异常（status_ok={status_ok}, age={age}s）");
             }
         }
     }
 
     if channel_count == 0 {
-        println!("  ℹ️ no channel components tracked in state yet");
+        println!("  ℹ️ 状态中尚未跟踪任何通道组件");
     } else {
-        println!("  Channel summary: {channel_count} total, {stale_channels} stale");
+        println!("  通道汇总: 共 {channel_count} 个，{stale_channels} 个已过期");
     }
 
     Ok(())

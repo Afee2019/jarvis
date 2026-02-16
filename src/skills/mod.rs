@@ -198,10 +198,7 @@ fn ensure_open_skills_repo() -> Option<PathBuf> {
         if pull_open_skills_repo(&repo_dir) {
             let _ = mark_open_skills_synced(&repo_dir);
         } else {
-            tracing::warn!(
-                "open-skills update failed; using local copy from {}",
-                repo_dir.display()
-            );
+            tracing::warn!("open-skills 更新失败；使用本地副本 {}", repo_dir.display());
         }
     }
 
@@ -211,10 +208,7 @@ fn ensure_open_skills_repo() -> Option<PathBuf> {
 fn clone_open_skills_repo(repo_dir: &Path) -> bool {
     if let Some(parent) = repo_dir.parent() {
         if let Err(err) = std::fs::create_dir_all(parent) {
-            tracing::warn!(
-                "failed to create open-skills parent directory {}: {err}",
-                parent.display()
-            );
+            tracing::warn!("创建 open-skills 父目录失败 {}: {err}", parent.display());
             return false;
         }
     }
@@ -226,16 +220,16 @@ fn clone_open_skills_repo(repo_dir: &Path) -> bool {
 
     match output {
         Ok(result) if result.status.success() => {
-            tracing::info!("initialized open-skills at {}", repo_dir.display());
+            tracing::info!("已初始化 open-skills 于 {}", repo_dir.display());
             true
         }
         Ok(result) => {
             let stderr = String::from_utf8_lossy(&result.stderr);
-            tracing::warn!("failed to clone open-skills: {stderr}");
+            tracing::warn!("克隆 open-skills 失败: {stderr}");
             false
         }
         Err(err) => {
-            tracing::warn!("failed to run git clone for open-skills: {err}");
+            tracing::warn!("运行 git clone open-skills 失败: {err}");
             false
         }
     }
@@ -257,11 +251,11 @@ fn pull_open_skills_repo(repo_dir: &Path) -> bool {
         Ok(result) if result.status.success() => true,
         Ok(result) => {
             let stderr = String::from_utf8_lossy(&result.stderr);
-            tracing::warn!("failed to pull open-skills updates: {stderr}");
+            tracing::warn!("拉取 open-skills 更新失败: {stderr}");
             false
         }
         Err(err) => {
-            tracing::warn!("failed to run git pull for open-skills: {err}");
+            tracing::warn!("运行 git pull open-skills 失败: {err}");
             false
         }
     }
@@ -458,14 +452,16 @@ pub fn handle_command(command: crate::SkillCommands, workspace_dir: &Path) -> Re
         crate::SkillCommands::List => {
             let skills = load_skills(workspace_dir);
             if skills.is_empty() {
-                println!("No skills installed.");
+                println!("尚未安装任何技能。");
                 println!();
-                println!("  Create one: mkdir -p ~/.jarvis/workspace/skills/my-skill");
-                println!("              echo '# My Skill' > ~/.jarvis/workspace/skills/my-skill/SKILL.md");
+                println!("  创建技能: mkdir -p ~/.jarvis/workspace/skills/my-skill");
+                println!(
+                    "            echo '# My Skill' > ~/.jarvis/workspace/skills/my-skill/SKILL.md"
+                );
                 println!();
-                println!("  Or install: jarvis skills install <github-url>");
+                println!("  或安装:   jarvis skills install <github-url>");
             } else {
-                println!("Installed skills ({}):", skills.len());
+                println!("已安装的技能 ({}):", skills.len());
                 println!();
                 for skill in &skills {
                     println!(
@@ -494,7 +490,7 @@ pub fn handle_command(command: crate::SkillCommands, workspace_dir: &Path) -> Re
             Ok(())
         }
         crate::SkillCommands::Install { source } => {
-            println!("Installing skill from: {source}");
+            println!("正在从以下位置安装技能: {source}");
 
             let skills_path = skills_dir(workspace_dir);
             std::fs::create_dir_all(&skills_path)?;
@@ -507,20 +503,17 @@ pub fn handle_command(command: crate::SkillCommands, workspace_dir: &Path) -> Re
                     .output()?;
 
                 if output.status.success() {
-                    println!(
-                        "  {} Skill installed successfully!",
-                        console::style("✓").green().bold()
-                    );
-                    println!("  Restart `jarvis channel start` to activate.");
+                    println!("  {} 技能安装成功！", console::style("✓").green().bold());
+                    println!("  重启 `jarvis channel start` 以激活。");
                 } else {
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    anyhow::bail!("Git clone failed: {stderr}");
+                    anyhow::bail!("Git clone 失败: {stderr}");
                 }
             } else {
                 // Local path — symlink or copy
                 let src = PathBuf::from(&source);
                 if !src.exists() {
-                    anyhow::bail!("Source path does not exist: {source}");
+                    anyhow::bail!("源路径不存在: {source}");
                 }
                 let name = src.file_name().unwrap_or_default();
                 let dest = skills_path.join(name);
@@ -529,24 +522,24 @@ pub fn handle_command(command: crate::SkillCommands, workspace_dir: &Path) -> Re
                 {
                     std::os::unix::fs::symlink(&src, &dest)?;
                     println!(
-                        "  {} Skill linked: {}",
+                        "  {} 技能已链接: {}",
                         console::style("✓").green().bold(),
                         dest.display()
                     );
                 }
                 #[cfg(windows)]
                 {
-                    // On Windows, try symlink first (requires admin or developer mode),
-                    // fall back to directory junction, then copy
+                    // 在 Windows 上优先尝试符号链接（需要管理员或开发者模式），
+                    // 回退到目录联接，再回退到复制
                     use std::os::windows::fs::symlink_dir;
                     if symlink_dir(&src, &dest).is_ok() {
                         println!(
-                            "  {} Skill linked: {}",
+                            "  {} 技能已链接: {}",
                             console::style("✓").green().bold(),
                             dest.display()
                         );
                     } else {
-                        // Try junction as fallback (works without admin)
+                        // 尝试目录联接作为回退（无需管理员权限）
                         let junction_result = std::process::Command::new("cmd")
                             .args(["/C", "mklink", "/J"])
                             .arg(&dest)
@@ -555,15 +548,15 @@ pub fn handle_command(command: crate::SkillCommands, workspace_dir: &Path) -> Re
 
                         if junction_result.is_ok() && junction_result.unwrap().status.success() {
                             println!(
-                                "  {} Skill linked (junction): {}",
+                                "  {} 技能已链接（联接）: {}",
                                 console::style("✓").green().bold(),
                                 dest.display()
                             );
                         } else {
-                            // Final fallback: copy the directory
+                            // 最终回退：复制目录
                             copy_dir_recursive(&src, &dest)?;
                             println!(
-                                "  {} Skill copied: {}",
+                                "  {} 技能已复制: {}",
                                 console::style("✓").green().bold(),
                                 dest.display()
                             );
@@ -572,10 +565,10 @@ pub fn handle_command(command: crate::SkillCommands, workspace_dir: &Path) -> Re
                 }
                 #[cfg(not(any(unix, windows)))]
                 {
-                    // On other platforms, copy the directory
+                    // 在其他平台上复制目录
                     copy_dir_recursive(&src, &dest)?;
                     println!(
-                        "  {} Skill copied: {}",
+                        "  {} 技能已复制: {}",
                         console::style("✓").green().bold(),
                         dest.display()
                     );
@@ -585,30 +578,30 @@ pub fn handle_command(command: crate::SkillCommands, workspace_dir: &Path) -> Re
             Ok(())
         }
         crate::SkillCommands::Remove { name } => {
-            // Reject path traversal attempts
+            // 拒绝路径遍历攻击
             if name.contains("..") || name.contains('/') || name.contains('\\') {
-                anyhow::bail!("Invalid skill name: {name}");
+                anyhow::bail!("无效的技能名称: {name}");
             }
 
             let skill_path = skills_dir(workspace_dir).join(&name);
 
-            // Verify the resolved path is actually inside the skills directory
+            // 验证解析后的路径确实在技能目录内
             let canonical_skills = skills_dir(workspace_dir)
                 .canonicalize()
                 .unwrap_or_else(|_| skills_dir(workspace_dir));
             if let Ok(canonical_skill) = skill_path.canonicalize() {
                 if !canonical_skill.starts_with(&canonical_skills) {
-                    anyhow::bail!("Skill path escapes skills directory: {name}");
+                    anyhow::bail!("技能路径逃逸出技能目录: {name}");
                 }
             }
 
             if !skill_path.exists() {
-                anyhow::bail!("Skill not found: {name}");
+                anyhow::bail!("技能未找到: {name}");
             }
 
             std::fs::remove_dir_all(&skill_path)?;
             println!(
-                "  {} Skill '{}' removed.",
+                "  {} 技能「{}」已移除。",
                 console::style("✓").green().bold(),
                 name
             );

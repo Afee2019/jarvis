@@ -126,7 +126,7 @@ impl BrowserTool {
         let url = url.trim();
 
         if url.is_empty() {
-            anyhow::bail!("URL cannot be empty");
+            anyhow::bail!("URL 不能为空");
         }
 
         // Allow file:// URLs for local testing
@@ -135,24 +135,24 @@ impl BrowserTool {
         }
 
         if !url.starts_with("https://") && !url.starts_with("http://") {
-            anyhow::bail!("Only http:// and https:// URLs are allowed");
+            anyhow::bail!("仅允许 http:// 和 https:// URL");
         }
 
         if self.allowed_domains.is_empty() {
             anyhow::bail!(
-                "Browser tool enabled but no allowed_domains configured. \
-                Add [browser].allowed_domains in config.toml"
+                "浏览器工具已启用，但未配置 allowed_domains。\
+                请在 config.toml 中添加 [browser].allowed_domains"
             );
         }
 
         let host = extract_host(url)?;
 
         if is_private_host(&host) {
-            anyhow::bail!("Blocked local/private host: {host}");
+            anyhow::bail!("已阻止本地/私有主机: {host}");
         }
 
         if !host_matches_allowlist(&host, &self.allowed_domains) {
-            anyhow::bail!("Host '{host}' not in browser.allowed_domains");
+            anyhow::bail!("主机「{host}」不在 browser.allowed_domains 中");
         }
 
         Ok(())
@@ -468,7 +468,7 @@ impl Tool for BrowserTool {
             return Ok(ToolResult {
                 success: false,
                 output: String::new(),
-                error: Some("Action blocked: autonomy is read-only".into()),
+                error: Some("操作被阻止: 自主级别为只读".into()),
             });
         }
 
@@ -476,7 +476,7 @@ impl Tool for BrowserTool {
             return Ok(ToolResult {
                 success: false,
                 output: String::new(),
-                error: Some("Action blocked: rate limit exceeded".into()),
+                error: Some("操作被阻止: 超出速率限制".into()),
             });
         }
 
@@ -486,7 +486,7 @@ impl Tool for BrowserTool {
                 success: false,
                 output: String::new(),
                 error: Some(
-                    "agent-browser CLI not found. Install with: npm install -g agent-browser"
+                    "未找到 agent-browser CLI。请使用以下命令安装: npm install -g agent-browser"
                         .into(),
                 ),
             });
@@ -496,14 +496,14 @@ impl Tool for BrowserTool {
         let action_str = args
             .get("action")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing 'action' parameter"))?;
+            .ok_or_else(|| anyhow::anyhow!("缺少「action」参数"))?;
 
         let action = match action_str {
             "open" => {
                 let url = args
                     .get("url")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'url' for open action"))?;
+                    .ok_or_else(|| anyhow::anyhow!("open 操作缺少「url」参数"))?;
                 BrowserAction::Open { url: url.into() }
             }
             "snapshot" => BrowserAction::Snapshot {
@@ -524,7 +524,7 @@ impl Tool for BrowserTool {
                 let selector = args
                     .get("selector")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'selector' for click"))?;
+                    .ok_or_else(|| anyhow::anyhow!("click 操作缺少「selector」参数"))?;
                 BrowserAction::Click {
                     selector: selector.into(),
                 }
@@ -533,11 +533,11 @@ impl Tool for BrowserTool {
                 let selector = args
                     .get("selector")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'selector' for fill"))?;
+                    .ok_or_else(|| anyhow::anyhow!("fill 操作缺少「selector」参数"))?;
                 let value = args
                     .get("value")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'value' for fill"))?;
+                    .ok_or_else(|| anyhow::anyhow!("fill 操作缺少「value」参数"))?;
                 BrowserAction::Fill {
                     selector: selector.into(),
                     value: value.into(),
@@ -547,11 +547,11 @@ impl Tool for BrowserTool {
                 let selector = args
                     .get("selector")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'selector' for type"))?;
+                    .ok_or_else(|| anyhow::anyhow!("type 操作缺少「selector」参数"))?;
                 let text = args
                     .get("text")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'text' for type"))?;
+                    .ok_or_else(|| anyhow::anyhow!("type 操作缺少「text」参数"))?;
                 BrowserAction::Type {
                     selector: selector.into(),
                     text: text.into(),
@@ -561,7 +561,7 @@ impl Tool for BrowserTool {
                 let selector = args
                     .get("selector")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'selector' for get_text"))?;
+                    .ok_or_else(|| anyhow::anyhow!("get_text 操作缺少「selector」参数"))?;
                 BrowserAction::GetText {
                     selector: selector.into(),
                 }
@@ -587,14 +587,14 @@ impl Tool for BrowserTool {
                 let key = args
                     .get("key")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'key' for press"))?;
+                    .ok_or_else(|| anyhow::anyhow!("press 操作缺少「key」参数"))?;
                 BrowserAction::Press { key: key.into() }
             }
             "hover" => {
                 let selector = args
                     .get("selector")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'selector' for hover"))?;
+                    .ok_or_else(|| anyhow::anyhow!("hover 操作缺少「selector」参数"))?;
                 BrowserAction::Hover {
                     selector: selector.into(),
                 }
@@ -603,7 +603,7 @@ impl Tool for BrowserTool {
                 let direction = args
                     .get("direction")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'direction' for scroll"))?;
+                    .ok_or_else(|| anyhow::anyhow!("scroll 操作缺少「direction」参数"))?;
                 BrowserAction::Scroll {
                     direction: direction.into(),
                     pixels: args
@@ -616,7 +616,7 @@ impl Tool for BrowserTool {
                 let selector = args
                     .get("selector")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'selector' for is_visible"))?;
+                    .ok_or_else(|| anyhow::anyhow!("is_visible 操作缺少「selector」参数"))?;
                 BrowserAction::IsVisible {
                     selector: selector.into(),
                 }
@@ -626,15 +626,15 @@ impl Tool for BrowserTool {
                 let by = args
                     .get("by")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'by' for find"))?;
+                    .ok_or_else(|| anyhow::anyhow!("find 操作缺少「by」参数"))?;
                 let value = args
                     .get("value")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'value' for find"))?;
+                    .ok_or_else(|| anyhow::anyhow!("find 操作缺少「value」参数"))?;
                 let action = args
                     .get("find_action")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing 'find_action' for find"))?;
+                    .ok_or_else(|| anyhow::anyhow!("find 操作缺少「find_action」参数"))?;
                 BrowserAction::Find {
                     by: by.into(),
                     value: value.into(),
@@ -649,7 +649,7 @@ impl Tool for BrowserTool {
                 return Ok(ToolResult {
                     success: false,
                     output: String::new(),
-                    error: Some(format!("Unknown action: {action_str}")),
+                    error: Some(format!("未知操作: {action_str}")),
                 });
             }
         };
@@ -689,7 +689,7 @@ fn extract_host(url_str: &str) -> anyhow::Result<String> {
     };
 
     if host.is_empty() {
-        anyhow::bail!("Invalid URL: no host");
+        anyhow::bail!("无效的 URL: 缺少主机名");
     }
 
     Ok(host.to_lowercase())

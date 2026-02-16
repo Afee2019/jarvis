@@ -735,21 +735,18 @@ impl Config {
     pub fn load_or_init() -> Result<Self> {
         let home = UserDirs::new()
             .map(|u| u.home_dir().to_path_buf())
-            .context("Could not find home directory")?;
+            .context("无法找到用户主目录")?;
         let jarvis_dir = home.join(".jarvis");
         let config_path = jarvis_dir.join("config.toml");
 
         if !jarvis_dir.exists() {
-            fs::create_dir_all(&jarvis_dir).context("Failed to create .jarvis directory")?;
-            fs::create_dir_all(jarvis_dir.join("workspace"))
-                .context("Failed to create workspace directory")?;
+            fs::create_dir_all(&jarvis_dir).context("创建 .jarvis 目录失败")?;
+            fs::create_dir_all(jarvis_dir.join("workspace")).context("创建 workspace 目录失败")?;
         }
 
         if config_path.exists() {
-            let contents =
-                fs::read_to_string(&config_path).context("Failed to read config file")?;
-            let mut config: Config =
-                toml::from_str(&contents).context("Failed to parse config file")?;
+            let contents = fs::read_to_string(&config_path).context("读取配置文件失败")?;
+            let mut config: Config = toml::from_str(&contents).context("解析配置文件失败")?;
             // Set computed paths that are skipped during serialization
             config.config_path.clone_from(&config_path);
             config.workspace_dir = jarvis_dir.join("workspace");
@@ -824,8 +821,8 @@ impl Config {
     }
 
     pub fn save(&self) -> Result<()> {
-        let toml_str = toml::to_string_pretty(self).context("Failed to serialize config")?;
-        fs::write(&self.config_path, toml_str).context("Failed to write config file")?;
+        let toml_str = toml::to_string_pretty(self).context("序列化配置失败")?;
+        fs::write(&self.config_path, toml_str).context("写入配置文件失败")?;
         Ok(())
     }
 }

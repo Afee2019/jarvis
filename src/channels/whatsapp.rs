@@ -82,8 +82,8 @@ impl WhatsAppChannel {
 
                     if !self.is_number_allowed(&normalized_from) {
                         tracing::warn!(
-                            "WhatsApp: ignoring message from unauthorized number: {normalized_from}. \
-                            Add to allowed_numbers in config.toml, then run `jarvis onboard --channels-only`."
+                            "WhatsApp: 忽略未授权号码的消息: {normalized_from}。\
+                            请在 config.toml 中添加到 allowed_numbers，然后运行 `jarvis onboard --channels-only`。"
                         );
                         continue;
                     }
@@ -97,7 +97,7 @@ impl WhatsAppChannel {
                             .to_string()
                     } else {
                         // Could be image, audio, etc. — skip for now
-                        tracing::debug!("WhatsApp: skipping non-text message from {from}");
+                        tracing::debug!("WhatsApp: 跳过来自 {from} 的非文本消息");
                         continue;
                     };
 
@@ -171,8 +171,8 @@ impl Channel for WhatsAppChannel {
         if !resp.status().is_success() {
             let status = resp.status();
             let error_body = resp.text().await.unwrap_or_default();
-            tracing::error!("WhatsApp send failed: {status} — {error_body}");
-            anyhow::bail!("WhatsApp API error: {status}");
+            tracing::error!("WhatsApp 发送失败: {status} — {error_body}");
+            anyhow::bail!("WhatsApp API 错误: {status}");
         }
 
         Ok(())
@@ -183,8 +183,8 @@ impl Channel for WhatsAppChannel {
         // Messages are received via the gateway's /whatsapp endpoint.
         // This method keeps the channel "alive" but doesn't actively poll.
         tracing::info!(
-            "WhatsApp channel active (webhook mode). \
-            Configure Meta webhook to POST to your gateway's /whatsapp endpoint."
+            "WhatsApp 通道已激活（webhook 模式）。\
+            请配置 Meta webhook 将 POST 请求发送至网关的 /whatsapp 端点。"
         );
 
         // Keep the task alive — it will be cancelled when the channel shuts down

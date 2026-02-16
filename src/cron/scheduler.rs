@@ -22,7 +22,7 @@ pub async fn run(config: Config) -> Result<()> {
             Ok(jobs) => jobs,
             Err(e) => {
                 crate::health::mark_component_error("scheduler", e.to_string());
-                tracing::warn!("Scheduler query failed: {e}");
+                tracing::warn!("调度器查询失败: {e}");
                 continue;
             }
         };
@@ -37,7 +37,7 @@ pub async fn run(config: Config) -> Result<()> {
 
             if let Err(e) = reschedule_after_run(&config, &job, success, &output) {
                 crate::health::mark_component_error("scheduler", e.to_string());
-                tracing::warn!("Failed to persist scheduler run result: {e}");
+                tracing::warn!("持久化调度器运行结果失败: {e}");
             }
         }
     }

@@ -1,5 +1,5 @@
 use crate::config::Config;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::Utc;
 use std::future::Future;
 use std::path::PathBuf;
@@ -8,7 +8,109 @@ use tokio::time::Duration;
 
 const STATUS_FLUSH_SECONDS: u64 = 5;
 
+/// PID 文件路径：~/.jarvis/daemon.pid
+pub fn pid_file_path(config: &Config) -> PathBuf {
+    config
+        .config_path
+        .parent()
+        .map_or_else(|| PathBuf::from("."), PathBuf::from)
+        .join("daemon.pid")
+}
+
+#[cfg(unix)]
+#[allow(clippy::cast_possible_wrap)]
+fn pid_to_native(pid: u32) -> libc::pid_t {
+    pid as libc::pid_t
+}
+
+/// 检查 daemon 是否在运行，返回活跃 PID 或 None
+pub fn is_daemon_running(config: &Config) -> Option<u32> {
+    let path = pid_file_path(config);
+    let content = std::fs::read_to_string(&path).ok()?;
+    let pid: u32 = content.trim().parse().ok()?;
+
+    // 检查进程是否存活（kill -0）
+    #[cfg(unix)]
+    {
+        let result = unsafe { libc::kill(pid_to_native(pid), 0) };
+        if result == 0 {
+            Some(pid)
+        } else {
+            // 进程不存在，清理过期 PID 文件
+            let _ = std::fs::remove_file(&path);
+            None
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        // 非 Unix 平台：仅检查 PID 文件存在
+        Some(pid)
+    }
+}
+
+/// 停止运行中的 daemon（发送 SIGTERM）
+pub fn stop_daemon(config: &Config) -> Result<()> {
+    let pid_path = pid_file_path(config);
+    let Some(pid) = is_daemon_running(config) else {
+        println!("守护进程未运行");
+        return Ok(());
+    };
+
+    #[cfg(unix)]
+    {
+        let result = unsafe { libc::kill(pid_to_native(pid), libc::SIGTERM) };
+        if result != 0 {
+            anyhow::bail!(
+                "发送 SIGTERM 到进程 {pid} 失败: {}",
+                std::io::Error::last_os_error()
+            );
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        anyhow::bail!("停止守护进程仅支持 Unix 平台");
+    }
+
+    // 等待进程退出（最多 10 秒）
+    for _ in 0..100 {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if is_daemon_running(config).is_none() {
+            let _ = std::fs::remove_file(&pid_path);
+            println!("✅ 守护进程已停止（PID {pid}）");
+            return Ok(());
+        }
+    }
+
+    // 超时后尝试 SIGKILL
+    #[cfg(unix)]
+    {
+        let _ = unsafe { libc::kill(pid_to_native(pid), libc::SIGKILL) };
+    }
+    let _ = std::fs::remove_file(&pid_path);
+    println!("⚠️  守护进程已强制终止（PID {pid}）");
+    Ok(())
+}
+
+/// 写入 PID 文件
+fn write_pid_file(config: &Config) -> Result<()> {
+    let path = pid_file_path(config);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&path, std::process::id().to_string())
+        .with_context(|| format!("写入 PID 文件失败: {}", path.display()))
+}
+
+/// 清理 PID 文件
+fn remove_pid_file(config: &Config) {
+    let _ = std::fs::remove_file(pid_file_path(config));
+}
+
 pub async fn run(config: Config, host: String, port: u16) -> Result<()> {
+    write_pid_file(&config)?;
+
     let initial_backoff = config.reliability.channel_initial_backoff_secs.max(1);
     let max_backoff = config
         .reliability
@@ -54,7 +156,7 @@ pub async fn run(config: Config, host: String, port: u16) -> Result<()> {
             ));
         } else {
             crate::health::mark_component_ok("channels");
-            tracing::info!("No real-time channels configured; channel supervisor disabled");
+            tracing::info!("未配置实时通道；通道 supervisor 已禁用");
         }
     }
 
@@ -84,10 +186,10 @@ pub async fn run(config: Config, host: String, port: u16) -> Result<()> {
         ));
     }
 
-    println!("🧠 Jarvis daemon started");
-    println!("   Gateway:  http://{host}:{port}");
-    println!("   Components: gateway, channels, heartbeat, scheduler");
-    println!("   Ctrl+C to stop");
+    println!("🧠 Jarvis 守护进程已启动");
+    println!("   Gateway：http://{host}:{port}");
+    println!("   组件：gateway, channels, heartbeat, scheduler");
+    println!("   按 Ctrl+C 停止");
 
     tokio::signal::ctrl_c().await?;
     crate::health::mark_component_error("daemon", "shutdown requested");
@@ -98,6 +200,10 @@ pub async fn run(config: Config, host: String, port: u16) -> Result<()> {
     for handle in handles {
         let _ = handle.await;
     }
+
+    remove_pid_file(&config);
+    // 清理状态文件
+    let _ = std::fs::remove_file(state_file_path(&config));
 
     Ok(())
 }
@@ -152,13 +258,13 @@ where
             match run_component().await {
                 Ok(()) => {
                     crate::health::mark_component_error(name, "component exited unexpectedly");
-                    tracing::warn!("Daemon component '{name}' exited unexpectedly");
+                    tracing::warn!("守护进程组件「{name}」意外退出");
                     // Clean exit — reset backoff since the component ran successfully
                     backoff = initial_backoff_secs.max(1);
                 }
                 Err(e) => {
                     crate::health::mark_component_error(name, e.to_string());
-                    tracing::error!("Daemon component '{name}' failed: {e}");
+                    tracing::error!("守护进程组件「{name}」失败：{e}");
                 }
             }
 
@@ -196,7 +302,7 @@ async fn run_heartbeat_worker(config: Config) -> Result<()> {
             if let Err(e) = crate::agent::run(config.clone(), Some(prompt), None, None, temp).await
             {
                 crate::health::mark_component_error("heartbeat", e.to_string());
-                tracing::warn!("Heartbeat task failed: {e}");
+                tracing::warn!("Heartbeat 任务失败：{e}");
             } else {
                 crate::health::mark_component_ok("heartbeat");
             }
@@ -272,6 +378,60 @@ mod tests {
             .as_str()
             .unwrap_or("")
             .contains("component exited unexpectedly"));
+    }
+
+    #[test]
+    fn pid_file_path_uses_config_directory() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+
+        let path = pid_file_path(&config);
+        assert_eq!(path, tmp.path().join("daemon.pid"));
+    }
+
+    #[test]
+    fn is_daemon_running_returns_none_when_no_pid_file() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+
+        assert!(is_daemon_running(&config).is_none());
+    }
+
+    #[test]
+    fn is_daemon_running_returns_none_for_stale_pid() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+
+        // 写入一个不存在的 PID
+        std::fs::write(pid_file_path(&config), "999999999").unwrap();
+        assert!(is_daemon_running(&config).is_none());
+        // 过期 PID 文件应被自动清理
+        assert!(!pid_file_path(&config).exists());
+    }
+
+    #[test]
+    fn write_and_remove_pid_file() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+
+        write_pid_file(&config).unwrap();
+        let path = pid_file_path(&config);
+        assert!(path.exists());
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(content, std::process::id().to_string());
+
+        remove_pid_file(&config);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn stop_daemon_noop_when_not_running() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+
+        // 不应报错
+        stop_daemon(&config).unwrap();
     }
 
     #[test]

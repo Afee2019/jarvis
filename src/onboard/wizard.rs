@@ -33,7 +33,7 @@ const BANNER: &str = r"
     ███████╗███████╗██║  ██║╚██████╔╝╚██████╗███████╗██║  ██║╚███╔███╔╝
     ╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝
 
-    Your AI, your rules.
+    你的 AI，你做主。
 
     ⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡
 ";
@@ -45,38 +45,35 @@ pub fn run_wizard() -> Result<Config> {
 
     println!(
         "  {}",
-        style("Welcome to Jarvis — the fastest, smallest AI assistant.")
+        style("欢迎使用 Jarvis — 最快、最轻量的 AI 助手。")
             .white()
             .bold()
     );
-    println!(
-        "  {}",
-        style("This wizard will configure your agent in under 60 seconds.").dim()
-    );
+    println!("  {}", style("本向导将在 60 秒内完成 Agent 配置。").dim());
     println!();
 
-    print_step(1, 8, "Workspace Setup");
+    print_step(1, 8, "工作区设置");
     let (workspace_dir, config_path) = setup_workspace()?;
 
-    print_step(2, 8, "AI Provider & API Key");
+    print_step(2, 8, "AI Provider 与 API 密钥");
     let (provider, api_key, model) = setup_provider()?;
 
-    print_step(3, 8, "Channels (How You Talk to Jarvis)");
+    print_step(3, 8, "通道（与 Jarvis 对话的方式）");
     let channels_config = setup_channels()?;
 
-    print_step(4, 8, "Tunnel (Expose to Internet)");
+    print_step(4, 8, "隧道（暴露到互联网）");
     let tunnel_config = setup_tunnel()?;
 
-    print_step(5, 8, "Tool Mode & Security");
+    print_step(5, 8, "工具模式与安全");
     let (composio_config, secrets_config) = setup_tool_mode()?;
 
-    print_step(6, 8, "Memory Configuration");
+    print_step(6, 8, "记忆配置");
     let memory_config = setup_memory()?;
 
-    print_step(7, 8, "Project Context (Personalize Your Agent)");
+    print_step(7, 8, "项目上下文（个性化你的 Agent）");
     let project_ctx = setup_project_context()?;
 
-    print_step(8, 8, "Workspace Files");
+    print_step(8, 8, "工作区文件");
     scaffold_workspace(&workspace_dir, &project_ctx)?;
 
     // ── Build config ──
@@ -109,15 +106,19 @@ pub fn run_wizard() -> Result<Config> {
     };
 
     println!(
-        "  {} Security: {} | workspace-scoped",
+        "  {} 安全：{} | 限定工作区",
         style("✓").green().bold(),
-        style("Supervised").green()
+        style("受监督模式").green()
     );
     println!(
-        "  {} Memory: {} (auto-save: {})",
+        "  {} 记忆：{}（自动保存：{}）",
         style("✓").green().bold(),
         style(&config.memory.backend).green(),
-        if config.memory.auto_save { "on" } else { "off" }
+        if config.memory.auto_save {
+            "开"
+        } else {
+            "关"
+        }
     );
 
     config.save()?;
@@ -135,7 +136,7 @@ pub fn run_wizard() -> Result<Config> {
     if has_channels && config.api_key.is_some() {
         let launch: bool = Confirm::new()
             .with_prompt(format!(
-                "  {} Launch channels now? (connected channels → AI → reply)",
+                "  {} 立即启动通道？（已连接通道 → AI → 自动回复）",
                 style("🚀").cyan()
             ))
             .default(true)
@@ -146,11 +147,12 @@ pub fn run_wizard() -> Result<Config> {
             println!(
                 "  {} {}",
                 style("⚡").cyan(),
-                style("Starting channel server...").white().bold()
+                style("正在启动通道服务器...").white().bold()
             );
             println!();
             // Signal to main.rs to call start_channels after wizard returns
-            std::env::set_var("JARVIS_AUTOSTART_CHANNELS", "1");
+            // SAFETY: 单线程上下文，wizard 在 daemon 启动前执行
+unsafe { std::env::set_var("JARVIS_AUTOSTART_CHANNELS", "1") };
         }
     }
 
@@ -162,21 +164,19 @@ pub fn run_channels_repair_wizard() -> Result<Config> {
     println!("{}", style(BANNER).cyan().bold());
     println!(
         "  {}",
-        style("Channels Repair — update channel tokens and allowlists only")
-            .white()
-            .bold()
+        style("通道修复 — 仅更新通道 Token 和白名单").white().bold()
     );
     println!();
 
     let mut config = Config::load_or_init()?;
 
-    print_step(1, 1, "Channels (How You Talk to Jarvis)");
+    print_step(1, 1, "通道（与 Jarvis 对话的方式）");
     config.channels_config = setup_channels()?;
     config.save()?;
 
     println!();
     println!(
-        "  {} Channel config saved: {}",
+        "  {} 通道配置已保存：{}",
         style("✓").green().bold(),
         style(config.config_path.display()).green()
     );
@@ -190,7 +190,7 @@ pub fn run_channels_repair_wizard() -> Result<Config> {
     if has_channels && config.api_key.is_some() {
         let launch: bool = Confirm::new()
             .with_prompt(format!(
-                "  {} Launch channels now? (connected channels → AI → reply)",
+                "  {} 立即启动通道？（已连接通道 → AI → 自动回复）",
                 style("🚀").cyan()
             ))
             .default(true)
@@ -201,11 +201,12 @@ pub fn run_channels_repair_wizard() -> Result<Config> {
             println!(
                 "  {} {}",
                 style("⚡").cyan(),
-                style("Starting channel server...").white().bold()
+                style("正在启动通道服务器...").white().bold()
             );
             println!();
             // Signal to main.rs to call start_channels after wizard returns
-            std::env::set_var("JARVIS_AUTOSTART_CHANNELS", "1");
+            // SAFETY: 单线程上下文，wizard 在 daemon 启动前执行
+unsafe { std::env::set_var("JARVIS_AUTOSTART_CHANNELS", "1") };
         }
     }
 
@@ -226,7 +227,7 @@ pub fn run_quick_setup(
     println!("{}", style(BANNER).cyan().bold());
     println!(
         "  {}",
-        style("Quick Setup — generating config with sensible defaults...")
+        style("快速设置 — 正在使用合理默认值生成配置...")
             .white()
             .bold()
     );
@@ -234,12 +235,12 @@ pub fn run_quick_setup(
 
     let home = directories::UserDirs::new()
         .map(|u| u.home_dir().to_path_buf())
-        .context("Could not find home directory")?;
+        .context("无法找到用户主目录")?;
     let jarvis_dir = home.join(".jarvis");
     let workspace_dir = jarvis_dir.join("workspace");
     let config_path = jarvis_dir.join("config.toml");
 
-    fs::create_dir_all(&workspace_dir).context("Failed to create workspace directory")?;
+    fs::create_dir_all(&workspace_dir).context("创建工作区目录失败")?;
 
     let provider_name = provider.unwrap_or("openrouter").to_string();
     let model = default_model_for_provider(&provider_name);
@@ -311,81 +312,81 @@ pub fn run_quick_setup(
     scaffold_workspace(&workspace_dir, &default_ctx)?;
 
     println!(
-        "  {} Workspace:  {}",
+        "  {} 工作区：    {}",
         style("✓").green().bold(),
         style(workspace_dir.display()).green()
     );
     println!(
-        "  {} Provider:   {}",
+        "  {} Provider：  {}",
         style("✓").green().bold(),
         style(&provider_name).green()
     );
     println!(
-        "  {} Model:      {}",
+        "  {} 模型：      {}",
         style("✓").green().bold(),
         style(&model).green()
     );
     println!(
-        "  {} API Key:    {}",
+        "  {} API 密钥：  {}",
         style("✓").green().bold(),
         if api_key.is_some() {
-            style("set").green()
+            style("已设置").green()
         } else {
-            style("not set (use --api-key or edit config.toml)").yellow()
+            style("未设置（使用 --api-key 或编辑 config.toml）").yellow()
         }
     );
     println!(
-        "  {} Security:   {}",
+        "  {} 安全：      {}",
         style("✓").green().bold(),
-        style("Supervised (workspace-scoped)").green()
+        style("受监督模式（限定工作区）").green()
     );
     println!(
-        "  {} Memory:     {} (auto-save: {})",
+        "  {} 记忆：      {}（自动保存：{}）",
         style("✓").green().bold(),
         style(&memory_backend_name).green(),
         if memory_backend_name == "none" {
-            "off"
+            "关"
         } else {
-            "on"
+            "开"
         }
     );
     println!(
-        "  {} Secrets:    {}",
+        "  {} 密钥存储：  {}",
         style("✓").green().bold(),
-        style("encrypted").green()
+        style("加密").green()
     );
     println!(
-        "  {} Gateway:    {}",
+        "  {} Gateway：   {}",
         style("✓").green().bold(),
-        style("pairing required (127.0.0.1:8080)").green()
+        style("需要配对（127.0.0.1:8080）").green()
     );
     println!(
-        "  {} Tunnel:     {}",
+        "  {} 隧道：      {}",
         style("✓").green().bold(),
-        style("none (local only)").dim()
+        style("无（仅本地）").dim()
     );
     println!(
-        "  {} Composio:   {}",
+        "  {} Composio：  {}",
         style("✓").green().bold(),
-        style("disabled (sovereign mode)").dim()
+        style("已禁用（自主模式）").dim()
     );
     println!();
     println!(
         "  {} {}",
-        style("Config saved:").white().bold(),
+        style("配置已保存：").white().bold(),
         style(config_path.display()).green()
     );
     println!();
-    println!("  {}", style("Next steps:").white().bold());
+    println!("  {}", style("后续步骤：").white().bold());
     if api_key.is_none() {
-        println!("    1. Set your API key:  export OPENROUTER_API_KEY=\"sk-...\"");
-        println!("    2. Or edit:           ~/.jarvis/config.toml");
-        println!("    3. Chat:              jarvis agent -m \"Hello!\"");
-        println!("    4. Gateway:           jarvis gateway");
+        println!("    1. 设置 API 密钥：export OPENROUTER_API_KEY=\"sk-...\"");
+        println!("    2. 或编辑：       ~/.jarvis/config.toml");
+        println!("    3. 对话：         jarvis agent -m \"你好！\"");
+        println!("    4. Gateway：      jarvis gateway");
     } else {
-        println!("    1. Chat:     jarvis agent -m \"Hello!\"");
-        println!("    2. Gateway:  jarvis gateway");
-        println!("    3. Status:   jarvis status");
+        println!("    1. 对话：    jarvis agent -m \"你好！\"");
+        println!("    2. Gateway：jarvis gateway");
+        println!("    3. 状态：    jarvis status");
     }
     println!();
 
@@ -426,16 +427,16 @@ fn print_bullet(text: &str) {
 fn setup_workspace() -> Result<(PathBuf, PathBuf)> {
     let home = directories::UserDirs::new()
         .map(|u| u.home_dir().to_path_buf())
-        .context("Could not find home directory")?;
+        .context("无法找到用户主目录")?;
     let default_dir = home.join(".jarvis");
 
     print_bullet(&format!(
-        "Default location: {}",
+        "默认位置：{}",
         style(default_dir.display()).green()
     ));
 
     let use_default = Confirm::new()
-        .with_prompt("  Use default workspace location?")
+        .with_prompt("  使用默认工作区位置？")
         .default(true)
         .interact()?;
 
@@ -443,7 +444,7 @@ fn setup_workspace() -> Result<(PathBuf, PathBuf)> {
         default_dir
     } else {
         let custom: String = Input::new()
-            .with_prompt("  Enter workspace path")
+            .with_prompt("  输入工作区路径")
             .interact_text()?;
         let expanded = shellexpand::tilde(&custom).to_string();
         PathBuf::from(expanded)
@@ -452,10 +453,10 @@ fn setup_workspace() -> Result<(PathBuf, PathBuf)> {
     let workspace_dir = jarvis_dir.join("workspace");
     let config_path = jarvis_dir.join("config.toml");
 
-    fs::create_dir_all(&workspace_dir).context("Failed to create workspace directory")?;
+    fs::create_dir_all(&workspace_dir).context("创建工作区目录失败")?;
 
     println!(
-        "  {} Workspace: {}",
+        "  {} 工作区：{}",
         style("✓").green().bold(),
         style(workspace_dir.display()).green()
     );
@@ -469,16 +470,16 @@ fn setup_workspace() -> Result<(PathBuf, PathBuf)> {
 fn setup_provider() -> Result<(String, String, String)> {
     // ── Tier selection ──
     let tiers = vec![
-        "⭐ Recommended (OpenRouter, Venice, Anthropic, OpenAI, Gemini)",
-        "⚡ Fast inference (Groq, Fireworks, Together AI)",
-        "🌐 Gateway / proxy (Vercel AI, Cloudflare AI, Amazon Bedrock)",
-        "🔬 Specialized (Moonshot/Kimi, GLM/Zhipu, MiniMax, Qianfan, Z.AI, Synthetic, OpenCode Zen, Cohere)",
-        "🏠 Local / private (Ollama — no API key needed)",
-        "🔧 Custom — bring your own OpenAI-compatible API",
+        "⭐ 推荐（OpenRouter、Venice、Anthropic、OpenAI、Gemini）",
+        "⚡ 快速推理（Groq、Fireworks、Together AI）",
+        "🌐 网关/代理（Vercel AI、Cloudflare AI、Amazon Bedrock）",
+        "🔬 专业化（Moonshot/Kimi、GLM/智谱、MiniMax、千帆、Z.AI、Synthetic、OpenCode Zen、Cohere）",
+        "🏠 本地/私有（Ollama — 无需 API 密钥）",
+        "🔧 自定义 — 使用你自己的 OpenAI 兼容 API",
     ];
 
     let tier_idx = Select::new()
-        .with_prompt("  Select provider category")
+        .with_prompt("  选择 Provider 类别")
         .items(&tiers)
         .default(0)
         .interact()?;
@@ -487,41 +488,41 @@ fn setup_provider() -> Result<(String, String, String)> {
         0 => vec![
             (
                 "openrouter",
-                "OpenRouter — 200+ models, 1 API key (recommended)",
+                "OpenRouter — 200+ 模型，1 个 API 密钥（推荐）",
             ),
-            ("venice", "Venice AI — privacy-first (Llama, Opus)"),
-            ("anthropic", "Anthropic — Claude Sonnet & Opus (direct)"),
-            ("openai", "OpenAI — GPT-4o, o1, GPT-5 (direct)"),
-            ("deepseek", "DeepSeek — V3 & R1 (affordable)"),
+            ("venice", "Venice AI — 隐私优先（Llama、Opus）"),
+            ("anthropic", "Anthropic — Claude Sonnet & Opus（直连）"),
+            ("openai", "OpenAI — GPT-4o、o1、GPT-5（直连）"),
+            ("deepseek", "DeepSeek — V3 & R1（经济实惠）"),
             ("mistral", "Mistral — Large & Codestral"),
             ("xai", "xAI — Grok 3 & 4"),
-            ("perplexity", "Perplexity — search-augmented AI"),
+            ("perplexity", "Perplexity — 搜索增强 AI"),
             (
                 "gemini",
-                "Google Gemini — Gemini 2.0 Flash & Pro (supports CLI auth)",
+                "Google Gemini — Gemini 2.0 Flash & Pro（支持 CLI 认证）",
             ),
         ],
         1 => vec![
-            ("groq", "Groq — ultra-fast LPU inference"),
-            ("fireworks", "Fireworks AI — fast open-source inference"),
-            ("together", "Together AI — open-source model hosting"),
+            ("groq", "Groq — 超快 LPU 推理"),
+            ("fireworks", "Fireworks AI — 快速开源推理"),
+            ("together", "Together AI — 开源模型托管"),
         ],
         2 => vec![
             ("vercel", "Vercel AI Gateway"),
             ("cloudflare", "Cloudflare AI Gateway"),
-            ("bedrock", "Amazon Bedrock — AWS managed models"),
+            ("bedrock", "Amazon Bedrock — AWS 托管模型"),
         ],
         3 => vec![
             ("moonshot", "Moonshot — Kimi & Kimi Coding"),
-            ("glm", "GLM — ChatGLM / Zhipu models"),
-            ("minimax", "MiniMax — MiniMax AI models"),
-            ("qianfan", "Qianfan — Baidu AI models"),
-            ("zai", "Z.AI — Z.AI inference"),
-            ("synthetic", "Synthetic — Synthetic AI models"),
-            ("opencode", "OpenCode Zen — code-focused AI"),
+            ("glm", "GLM — ChatGLM / 智谱模型"),
+            ("minimax", "MiniMax — MiniMax AI 模型"),
+            ("qianfan", "千帆 — 百度 AI 模型"),
+            ("zai", "Z.AI — Z.AI 推理"),
+            ("synthetic", "Synthetic — Synthetic AI 模型"),
+            ("opencode", "OpenCode Zen — 代码专注 AI"),
             ("cohere", "Cohere — Command R+ & embeddings"),
         ],
-        4 => vec![("ollama", "Ollama — local models (Llama, Mistral, Phi)")],
+        4 => vec![("ollama", "Ollama — 本地模型（Llama、Mistral、Phi）")],
         _ => vec![], // Custom — handled below
     };
 
@@ -530,36 +531,36 @@ fn setup_provider() -> Result<(String, String, String)> {
         println!();
         println!(
             "  {} {}",
-            style("Custom Provider Setup").white().bold(),
-            style("— any OpenAI-compatible API").dim()
+            style("自定义 Provider 设置").white().bold(),
+            style("— 任何 OpenAI 兼容 API").dim()
         );
-        print_bullet("Jarvis works with ANY API that speaks the OpenAI chat completions format.");
-        print_bullet("Examples: LiteLLM, LocalAI, vLLM, text-generation-webui, LM Studio, etc.");
+        print_bullet("Jarvis 支持任何兼容 OpenAI chat completions 格式的 API。");
+        print_bullet("示例：LiteLLM、LocalAI、vLLM、text-generation-webui、LM Studio 等。");
         println!();
 
         let base_url: String = Input::new()
-            .with_prompt("  API base URL (e.g. http://localhost:1234 or https://my-api.com)")
+            .with_prompt("  API 基础 URL（例如 http://localhost:1234 或 https://my-api.com）")
             .interact_text()?;
 
         let base_url = base_url.trim().trim_end_matches('/').to_string();
         if base_url.is_empty() {
-            anyhow::bail!("Custom provider requires a base URL.");
+            anyhow::bail!("自定义 Provider 需要提供基础 URL。");
         }
 
         let api_key: String = Input::new()
-            .with_prompt("  API key (or Enter to skip if not needed)")
+            .with_prompt("  API 密钥（不需要则按 Enter 跳过）")
             .allow_empty(true)
             .interact_text()?;
 
         let model: String = Input::new()
-            .with_prompt("  Model name (e.g. llama3, gpt-4o, mistral)")
+            .with_prompt("  模型名称（例如 llama3、gpt-4o、mistral）")
             .default("default".into())
             .interact_text()?;
 
         let provider_name = format!("custom:{base_url}");
 
         println!(
-            "  {} Provider: {} | Model: {}",
+            "  {} Provider：{} | 模型：{}",
             style("✓").green().bold(),
             style(&provider_name).green(),
             style(&model).green()
@@ -571,7 +572,7 @@ fn setup_provider() -> Result<(String, String, String)> {
     let provider_labels: Vec<&str> = providers.iter().map(|(_, label)| *label).collect();
 
     let provider_idx = Select::new()
-        .with_prompt("  Select your AI provider")
+        .with_prompt("  选择你的 AI Provider")
         .items(&provider_labels)
         .default(0)
         .interact()?;
@@ -580,7 +581,7 @@ fn setup_provider() -> Result<(String, String, String)> {
 
     // ── API key ──
     let api_key = if provider_name == "ollama" {
-        print_bullet("Ollama runs locally — no API key needed!");
+        print_bullet("Ollama 在本地运行 — 无需 API 密钥！");
         String::new()
     } else if provider_name == "gemini"
         || provider_name == "google"
@@ -589,43 +590,43 @@ fn setup_provider() -> Result<(String, String, String)> {
         // Special handling for Gemini: check for CLI auth first
         if crate::providers::gemini::GeminiProvider::has_cli_credentials() {
             print_bullet(&format!(
-                "{} Gemini CLI credentials detected! You can skip the API key.",
+                "{} 检测到 Gemini CLI 凭据！你可以跳过 API 密钥。",
                 style("✓").green().bold()
             ));
-            print_bullet("Jarvis will reuse your existing Gemini CLI authentication.");
+            print_bullet("Jarvis 将复用你现有的 Gemini CLI 认证。");
             println!();
 
             let use_cli: bool = dialoguer::Confirm::new()
-                .with_prompt("  Use existing Gemini CLI authentication?")
+                .with_prompt("  使用现有的 Gemini CLI 认证？")
                 .default(true)
                 .interact()?;
 
             if use_cli {
                 println!(
-                    "  {} Using Gemini CLI OAuth tokens",
+                    "  {} 使用 Gemini CLI OAuth tokens",
                     style("✓").green().bold()
                 );
                 String::new() // Empty key = will use CLI tokens
             } else {
-                print_bullet("Get your API key at: https://aistudio.google.com/app/apikey");
+                print_bullet("在此获取 API 密钥：https://aistudio.google.com/app/apikey");
                 Input::new()
-                    .with_prompt("  Paste your Gemini API key")
+                    .with_prompt("  粘贴你的 Gemini API 密钥")
                     .allow_empty(true)
                     .interact_text()?
             }
         } else if std::env::var("GEMINI_API_KEY").is_ok() {
             print_bullet(&format!(
-                "{} GEMINI_API_KEY environment variable detected!",
+                "{} 检测到 GEMINI_API_KEY 环境变量！",
                 style("✓").green().bold()
             ));
             String::new()
         } else {
-            print_bullet("Get your API key at: https://aistudio.google.com/app/apikey");
-            print_bullet("Or run `gemini` CLI to authenticate (tokens will be reused).");
+            print_bullet("在此获取 API 密钥：https://aistudio.google.com/app/apikey");
+            print_bullet("或运行 `gemini` CLI 进行认证（tokens 将被复用）。");
             println!();
 
             Input::new()
-                .with_prompt("  Paste your Gemini API key (or press Enter to skip)")
+                .with_prompt("  粘贴你的 Gemini API 密钥（或按 Enter 跳过）")
                 .allow_empty(true)
                 .interact_text()?
         }
@@ -655,22 +656,22 @@ fn setup_provider() -> Result<(String, String, String)> {
         println!();
         if !key_url.is_empty() {
             print_bullet(&format!(
-                "Get your API key at: {}",
+                "在此获取 API 密钥：{}",
                 style(key_url).cyan().underlined()
             ));
         }
-        print_bullet("You can also set it later via env var or config file.");
+        print_bullet("你也可以稍后通过环境变量或配置文件设置。");
         println!();
 
         let key: String = Input::new()
-            .with_prompt("  Paste your API key (or press Enter to skip)")
+            .with_prompt("  粘贴你的 API 密钥（或按 Enter 跳过）")
             .allow_empty(true)
             .interact_text()?;
 
         if key.is_empty() {
             let env_var = provider_env_var(provider_name);
             print_bullet(&format!(
-                "Skipped. Set {} or edit config.toml later.",
+                "已跳过。稍后设置 {} 或编辑 config.toml。",
                 style(env_var).yellow()
             ));
         }
@@ -805,7 +806,7 @@ fn setup_provider() -> Result<(String, String, String)> {
     let model_labels: Vec<&str> = models.iter().map(|(_, label)| *label).collect();
 
     let model_idx = Select::new()
-        .with_prompt("  Select your default model")
+        .with_prompt("  选择默认模型")
         .items(&model_labels)
         .default(0)
         .interact()?;
@@ -813,7 +814,7 @@ fn setup_provider() -> Result<(String, String, String)> {
     let model = models[model_idx].0.to_string();
 
     println!(
-        "  {} Provider: {} | Model: {}",
+        "  {} Provider：{} | 模型：{}",
         style("✓").green().bold(),
         style(provider_name).green(),
         style(&model).green()
@@ -855,17 +856,17 @@ fn provider_env_var(name: &str) -> &'static str {
 // ── Step 5: Tool Mode & Security ────────────────────────────────
 
 fn setup_tool_mode() -> Result<(ComposioConfig, SecretsConfig)> {
-    print_bullet("Choose how Jarvis connects to external apps.");
-    print_bullet("You can always change this later in config.toml.");
+    print_bullet("选择 Jarvis 连接外部应用的方式。");
+    print_bullet("你可以随时在 config.toml 中更改。");
     println!();
 
     let options = vec![
-        "Sovereign (local only) — you manage API keys, full privacy (default)",
-        "Composio (managed OAuth) — 1000+ apps via OAuth, no raw keys shared",
+        "自主模式（仅本地） — 你自己管理 API 密钥，完全隐私（默认）",
+        "Composio（托管 OAuth） — 通过 OAuth 连接 1000+ 应用，无需共享原始密钥",
     ];
 
     let choice = Select::new()
-        .with_prompt("  Select tool mode")
+        .with_prompt("  选择工具模式")
         .items(&options)
         .default(0)
         .interact()?;
@@ -874,29 +875,29 @@ fn setup_tool_mode() -> Result<(ComposioConfig, SecretsConfig)> {
         println!();
         println!(
             "  {} {}",
-            style("Composio Setup").white().bold(),
-            style("— 1000+ OAuth integrations (Gmail, Notion, GitHub, Slack, ...)").dim()
+            style("Composio 设置").white().bold(),
+            style("— 1000+ OAuth 集成（Gmail、Notion、GitHub、Slack……）").dim()
         );
-        print_bullet("Get your API key at: https://app.composio.dev/settings");
-        print_bullet("Jarvis uses Composio as a tool — your core agent stays local.");
+        print_bullet("在此获取 API 密钥：https://app.composio.dev/settings");
+        print_bullet("Jarvis 将 Composio 作为工具使用 — 你的核心 Agent 保持本地运行。");
         println!();
 
         let api_key: String = Input::new()
-            .with_prompt("  Composio API key (or Enter to skip)")
+            .with_prompt("  Composio API 密钥（或按 Enter 跳过）")
             .allow_empty(true)
             .interact_text()?;
 
         if api_key.trim().is_empty() {
             println!(
-                "  {} Skipped — set composio.api_key in config.toml later",
+                "  {} 已跳过 — 稍后在 config.toml 中设置 composio.api_key",
                 style("→").dim()
             );
             ComposioConfig::default()
         } else {
             println!(
-                "  {} Composio: {} (1000+ OAuth tools available)",
+                "  {} Composio：{}（1000+ OAuth 工具可用）",
                 style("✓").green().bold(),
-                style("enabled").green()
+                style("已启用").green()
             );
             ComposioConfig {
                 enabled: true,
@@ -906,20 +907,20 @@ fn setup_tool_mode() -> Result<(ComposioConfig, SecretsConfig)> {
         }
     } else {
         println!(
-            "  {} Tool mode: {} — full privacy, you own every key",
+            "  {} 工具模式：{} — 完全隐私，所有密钥由你掌控",
             style("✓").green().bold(),
-            style("Sovereign (local only)").green()
+            style("自主模式（仅本地）").green()
         );
         ComposioConfig::default()
     };
 
     // ── Encrypted secrets ──
     println!();
-    print_bullet("Jarvis can encrypt API keys stored in config.toml.");
-    print_bullet("A local key file protects against plaintext exposure and accidental leaks.");
+    print_bullet("Jarvis 可以加密存储在 config.toml 中的 API 密钥。");
+    print_bullet("本地密钥文件可防止明文暴露和意外泄漏。");
 
     let encrypt = Confirm::new()
-        .with_prompt("  Enable encrypted secret storage?")
+        .with_prompt("  启用加密密钥存储？")
         .default(true)
         .interact()?;
 
@@ -927,15 +928,15 @@ fn setup_tool_mode() -> Result<(ComposioConfig, SecretsConfig)> {
 
     if encrypt {
         println!(
-            "  {} Secrets: {} — keys encrypted with local key file",
+            "  {} 密钥存储：{} — 使用本地密钥文件加密",
             style("✓").green().bold(),
-            style("encrypted").green()
+            style("加密").green()
         );
     } else {
         println!(
-            "  {} Secrets: {} — keys stored as plaintext (not recommended)",
+            "  {} 密钥存储：{} — 明文存储（不推荐）",
             style("✓").green().bold(),
-            style("plaintext").yellow()
+            style("明文").yellow()
         );
     }
 
@@ -945,12 +946,12 @@ fn setup_tool_mode() -> Result<(ComposioConfig, SecretsConfig)> {
 // ── Step 6: Project Context ─────────────────────────────────────
 
 fn setup_project_context() -> Result<ProjectContext> {
-    print_bullet("Let's personalize your agent. You can always update these later.");
-    print_bullet("Press Enter to accept defaults.");
+    print_bullet("让我们个性化你的 Agent。你可以随时更新这些设置。");
+    print_bullet("按 Enter 接受默认值。");
     println!();
 
     let user_name: String = Input::new()
-        .with_prompt("  Your name")
+        .with_prompt("  你的名字")
         .default("User".into())
         .interact_text()?;
 
@@ -963,18 +964,18 @@ fn setup_project_context() -> Result<ProjectContext> {
         "Europe/Berlin (CET/CEST)",
         "Asia/Tokyo (JST)",
         "UTC",
-        "Other (type manually)",
+        "其他（手动输入）",
     ];
 
     let tz_idx = Select::new()
-        .with_prompt("  Your timezone")
+        .with_prompt("  你的时区")
         .items(&tz_options)
         .default(0)
         .interact()?;
 
     let timezone = if tz_idx == tz_options.len() - 1 {
         Input::new()
-            .with_prompt("  Enter timezone (e.g. America/New_York)")
+            .with_prompt("  输入时区（例如 America/New_York）")
             .default("UTC".into())
             .interact_text()?
     } else {
@@ -988,22 +989,22 @@ fn setup_project_context() -> Result<ProjectContext> {
     };
 
     let agent_name: String = Input::new()
-        .with_prompt("  Agent name")
+        .with_prompt("  Agent 名称")
         .default("Jarvis".into())
         .interact_text()?;
 
     let style_options = vec![
-        "Direct & concise — skip pleasantries, get to the point",
-        "Friendly & casual — warm, human, and helpful",
-        "Professional & polished — calm, confident, and clear",
-        "Expressive & playful — more personality + natural emojis",
-        "Technical & detailed — thorough explanations, code-first",
-        "Balanced — adapt to the situation",
-        "Custom — write your own style guide",
+        "直接简洁 — 跳过寒暄，直奔主题",
+        "友好随和 — 温暖、自然、乐于助人",
+        "专业精炼 — 沉稳、自信、清晰",
+        "生动活泼 — 更多个性 + 自然的 emoji",
+        "技术详尽 — 深入解释，代码优先",
+        "均衡适应 — 根据情况灵活调整",
+        "自定义 — 编写你自己的风格指南",
     ];
 
     let style_idx = Select::new()
-        .with_prompt("  Communication style")
+        .with_prompt("  沟通风格")
         .items(&style_options)
         .default(1)
         .interact()?;
@@ -1016,7 +1017,7 @@ fn setup_project_context() -> Result<ProjectContext> {
         4 => "Be technical and detailed. Thorough explanations, code-first.".to_string(),
         5 => "Adapt to the situation. Default to warm and clear communication; be concise when needed, thorough when it matters.".to_string(),
         _ => Input::new()
-            .with_prompt("  Custom communication style")
+            .with_prompt("  自定义沟通风格")
             .default(
                 "Be warm, natural, and clear. Use occasional relevant emojis (1-2 max) and avoid robotic phrasing.".into(),
             )
@@ -1024,7 +1025,7 @@ fn setup_project_context() -> Result<ProjectContext> {
     };
 
     println!(
-        "  {} Context: {} | {} | {} | {}",
+        "  {} 上下文：{} | {} | {} | {}",
         style("✓").green().bold(),
         style(&user_name).green(),
         style(&timezone).green(),
@@ -1043,18 +1044,18 @@ fn setup_project_context() -> Result<ProjectContext> {
 // ── Step 6: Memory Configuration ───────────────────────────────
 
 fn setup_memory() -> Result<MemoryConfig> {
-    print_bullet("Choose how Jarvis stores and searches memories.");
-    print_bullet("You can always change this later in config.toml.");
+    print_bullet("选择 Jarvis 存储和搜索记忆的方式。");
+    print_bullet("你可以随时在 config.toml 中更改。");
     println!();
 
     let options = vec![
-        "SQLite with Vector Search (recommended) — fast, hybrid search, embeddings",
-        "Markdown Files — simple, human-readable, no dependencies",
-        "None — disable persistent memory",
+        "SQLite + 向量搜索（推荐） — 快速、混合搜索、embeddings",
+        "Markdown 文件 — 简单、可读性强、无依赖",
+        "无 — 禁用持久化记忆",
     ];
 
     let choice = Select::new()
-        .with_prompt("  Select memory backend")
+        .with_prompt("  选择记忆后端")
         .items(&options)
         .default(0)
         .interact()?;
@@ -1069,17 +1070,17 @@ fn setup_memory() -> Result<MemoryConfig> {
         false
     } else {
         let save = Confirm::new()
-            .with_prompt("  Auto-save conversations to memory?")
+            .with_prompt("  自动保存对话到记忆？")
             .default(true)
             .interact()?;
         save
     };
 
     println!(
-        "  {} Memory: {} (auto-save: {})",
+        "  {} 记忆：{}（自动保存：{}）",
         style("✓").green().bold(),
         style(backend).green(),
-        if auto_save { "on" } else { "off" }
+        if auto_save { "开" } else { "关" }
     );
 
     Ok(MemoryConfig {
@@ -1103,8 +1104,8 @@ fn setup_memory() -> Result<MemoryConfig> {
 
 #[allow(clippy::too_many_lines)]
 fn setup_channels() -> Result<ChannelsConfig> {
-    print_bullet("Channels let you talk to Jarvis from anywhere.");
-    print_bullet("CLI is always available. Connect more channels now.");
+    print_bullet("通道让你可以从任何地方与 Jarvis 对话。");
+    print_bullet("CLI 始终可用。现在可以连接更多通道。");
     println!();
 
     let mut config = ChannelsConfig {
@@ -1124,47 +1125,47 @@ fn setup_channels() -> Result<ChannelsConfig> {
             format!(
                 "Telegram   {}",
                 if config.telegram.is_some() {
-                    "✅ connected"
+                    "✅ 已连接"
                 } else {
-                    "— connect your bot"
+                    "— 连接你的机器人"
                 }
             ),
             format!(
                 "Discord    {}",
                 if config.discord.is_some() {
-                    "✅ connected"
+                    "✅ 已连接"
                 } else {
-                    "— connect your bot"
+                    "— 连接你的机器人"
                 }
             ),
             format!(
                 "Slack      {}",
                 if config.slack.is_some() {
-                    "✅ connected"
+                    "✅ 已连接"
                 } else {
-                    "— connect your bot"
+                    "— 连接你的机器人"
                 }
             ),
             format!(
                 "iMessage   {}",
                 if config.imessage.is_some() {
-                    "✅ configured"
+                    "✅ 已配置"
                 } else {
-                    "— macOS only"
+                    "— 仅 macOS"
                 }
             ),
             format!(
                 "Matrix     {}",
                 if config.matrix.is_some() {
-                    "✅ connected"
+                    "✅ 已连接"
                 } else {
-                    "— self-hosted chat"
+                    "— 自托管聊天"
                 }
             ),
             format!(
                 "WhatsApp   {}",
                 if config.whatsapp.is_some() {
-                    "✅ connected"
+                    "✅ 已连接"
                 } else {
                     "— Business Cloud API"
                 }
@@ -1172,7 +1173,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
             format!(
                 "IRC        {}",
                 if config.irc.is_some() {
-                    "✅ configured"
+                    "✅ 已配置"
                 } else {
                     "— IRC over TLS"
                 }
@@ -1180,16 +1181,16 @@ fn setup_channels() -> Result<ChannelsConfig> {
             format!(
                 "Webhook    {}",
                 if config.webhook.is_some() {
-                    "✅ configured"
+                    "✅ 已配置"
                 } else {
-                    "— HTTP endpoint"
+                    "— HTTP 端点"
                 }
             ),
-            "Done — finish setup".to_string(),
+            "完成 — 结束设置".to_string(),
         ];
 
         let choice = Select::new()
-            .with_prompt("  Connect a channel (or Done to continue)")
+            .with_prompt("  连接通道（或选择「完成」继续）")
             .items(&options)
             .default(8)
             .interact()?;
@@ -1200,25 +1201,25 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 println!();
                 println!(
                     "  {} {}",
-                    style("Telegram Setup").white().bold(),
-                    style("— talk to Jarvis from Telegram").dim()
+                    style("Telegram 设置").white().bold(),
+                    style("— 从 Telegram 与 Jarvis 对话").dim()
                 );
-                print_bullet("1. Open Telegram and message @BotFather");
-                print_bullet("2. Send /newbot and follow the prompts");
-                print_bullet("3. Copy the bot token and paste it below");
+                print_bullet("1. 打开 Telegram，向 @BotFather 发消息");
+                print_bullet("2. 发送 /newbot 并按提示操作");
+                print_bullet("3. 复制机器人 Token 并粘贴到下方");
                 println!();
 
                 let token: String = Input::new()
-                    .with_prompt("  Bot token (from @BotFather)")
+                    .with_prompt("  机器人 Token（来自 @BotFather）")
                     .interact_text()?;
 
                 if token.trim().is_empty() {
-                    println!("  {} Skipped", style("→").dim());
+                    println!("  {} 已跳过", style("→").dim());
                     continue;
                 }
 
                 // Test connection
-                print!("  {} Testing connection... ", style("⏳").dim());
+                print!("  {} 正在测试连接... ", style("⏳").dim());
                 let client = reqwest::blocking::Client::new();
                 let url = format!("https://api.telegram.org/bot{token}/getMe");
                 match client.get(&url).send() {
@@ -1230,30 +1231,28 @@ fn setup_channels() -> Result<ChannelsConfig> {
                             .and_then(serde_json::Value::as_str)
                             .unwrap_or("unknown");
                         println!(
-                            "\r  {} Connected as @{bot_name}        ",
+                            "\r  {} 已连接为 @{bot_name}        ",
                             style("✅").green().bold()
                         );
                     }
                     _ => {
                         println!(
-                            "\r  {} Connection failed — check your token and try again",
+                            "\r  {} 连接失败 — 请检查 Token 后重试",
                             style("❌").red().bold()
                         );
                         continue;
                     }
                 }
 
+                print_bullet("建议先将你自己的 Telegram 身份加入白名单（安全且快速的设置方式）。");
                 print_bullet(
-                    "Allowlist your own Telegram identity first (recommended for secure + fast setup).",
+                    "使用你的 @用户名（不含 '@'，例如：argenis），或你的 Telegram 数字用户 ID。",
                 );
-                print_bullet(
-                    "Use your @username without '@' (example: argenis), or your numeric Telegram user ID.",
-                );
-                print_bullet("Use '*' only for temporary open testing.");
+                print_bullet("仅在临时开放测试时使用 '*'。");
 
                 let users_str: String = Input::new()
                     .with_prompt(
-                        "  Allowed Telegram identities (comma-separated: username without '@' and/or numeric user ID, '*' for all)",
+                        "  允许的 Telegram 身份（逗号分隔：不含 '@' 的用户名和/或数字用户 ID，'*' 表示所有）",
                     )
                     .allow_empty(true)
                     .interact_text()?;
@@ -1270,7 +1269,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
 
                 if allowed_users.is_empty() {
                     println!(
-                        "  {} No users allowlisted — Telegram inbound messages will be denied until you add your username/user ID or '*'.",
+                        "  {} 白名单为空 — Telegram 入站消息将被拒绝，直到你添加用户名/用户 ID 或 '*'。",
                         style("⚠").yellow().bold()
                     );
                 }
@@ -1285,24 +1284,24 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 println!();
                 println!(
                     "  {} {}",
-                    style("Discord Setup").white().bold(),
-                    style("— talk to Jarvis from Discord").dim()
+                    style("Discord 设置").white().bold(),
+                    style("— 从 Discord 与 Jarvis 对话").dim()
                 );
-                print_bullet("1. Go to https://discord.com/developers/applications");
-                print_bullet("2. Create a New Application → Bot → Copy token");
-                print_bullet("3. Enable MESSAGE CONTENT intent under Bot settings");
-                print_bullet("4. Invite bot to your server with messages permission");
+                print_bullet("1. 前往 https://discord.com/developers/applications");
+                print_bullet("2. 创建新应用 → Bot → 复制 Token");
+                print_bullet("3. 在 Bot 设置中启用 MESSAGE CONTENT intent");
+                print_bullet("4. 使用消息权限邀请机器人到你的服务器");
                 println!();
 
-                let token: String = Input::new().with_prompt("  Bot token").interact_text()?;
+                let token: String = Input::new().with_prompt("  机器人 Token").interact_text()?;
 
                 if token.trim().is_empty() {
-                    println!("  {} Skipped", style("→").dim());
+                    println!("  {} 已跳过", style("→").dim());
                     continue;
                 }
 
                 // Test connection
-                print!("  {} Testing connection... ", style("⏳").dim());
+                print!("  {} 正在测试连接... ", style("⏳").dim());
                 let client = reqwest::blocking::Client::new();
                 match client
                     .get("https://discord.com/api/v10/users/@me")
@@ -1316,13 +1315,13 @@ fn setup_channels() -> Result<ChannelsConfig> {
                             .and_then(serde_json::Value::as_str)
                             .unwrap_or("unknown");
                         println!(
-                            "\r  {} Connected as {bot_name}        ",
+                            "\r  {} 已连接为 {bot_name}        ",
                             style("✅").green().bold()
                         );
                     }
                     _ => {
                         println!(
-                            "\r  {} Connection failed — check your token and try again",
+                            "\r  {} 连接失败 — 请检查 Token 后重试",
                             style("❌").red().bold()
                         );
                         continue;
@@ -1330,19 +1329,19 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 }
 
                 let guild: String = Input::new()
-                    .with_prompt("  Server (guild) ID (optional, Enter to skip)")
+                    .with_prompt("  服务器（Guild）ID（可选，按 Enter 跳过）")
                     .allow_empty(true)
                     .interact_text()?;
 
-                print_bullet("Allowlist your own Discord user ID first (recommended).");
+                print_bullet("建议先将你自己的 Discord 用户 ID 加入白名单。");
                 print_bullet(
-                    "Get it in Discord: Settings -> Advanced -> Developer Mode (ON), then right-click your profile -> Copy User ID.",
+                    "在 Discord 中获取：设置 -> 高级 -> 开发者模式（开启），然后右键点击你的头像 -> 复制用户 ID。",
                 );
-                print_bullet("Use '*' only for temporary open testing.");
+                print_bullet("仅在临时开放测试时使用 '*'。");
 
                 let allowed_users_str: String = Input::new()
                     .with_prompt(
-                        "  Allowed Discord user IDs (comma-separated, recommended: your own ID, '*' for all)",
+                        "  允许的 Discord 用户 ID（逗号分隔，建议填写你自己的 ID，'*' 表示所有）",
                     )
                     .allow_empty(true)
                     .interact_text()?;
@@ -1359,7 +1358,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
 
                 if allowed_users.is_empty() {
                     println!(
-                        "  {} No users allowlisted — Discord inbound messages will be denied until you add IDs or '*'.",
+                        "  {} 白名单为空 — Discord 入站消息将被拒绝，直到你添加 ID 或 '*'。",
                         style("⚠").yellow().bold()
                     );
                 }
@@ -1375,25 +1374,25 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 println!();
                 println!(
                     "  {} {}",
-                    style("Slack Setup").white().bold(),
-                    style("— talk to Jarvis from Slack").dim()
+                    style("Slack 设置").white().bold(),
+                    style("— 从 Slack 与 Jarvis 对话").dim()
                 );
-                print_bullet("1. Go to https://api.slack.com/apps → Create New App");
-                print_bullet("2. Add Bot Token Scopes: chat:write, channels:history");
-                print_bullet("3. Install to workspace and copy the Bot Token");
+                print_bullet("1. 前往 https://api.slack.com/apps → 创建新应用");
+                print_bullet("2. 添加 Bot Token 权限范围：chat:write、channels:history");
+                print_bullet("3. 安装到工作区并复制 Bot Token");
                 println!();
 
                 let token: String = Input::new()
-                    .with_prompt("  Bot token (xoxb-...)")
+                    .with_prompt("  Bot Token（xoxb-...）")
                     .interact_text()?;
 
                 if token.trim().is_empty() {
-                    println!("  {} Skipped", style("→").dim());
+                    println!("  {} 已跳过", style("→").dim());
                     continue;
                 }
 
                 // Test connection
-                print!("  {} Testing connection... ", style("⏳").dim());
+                print!("  {} 正在测试连接... ", style("⏳").dim());
                 let client = reqwest::blocking::Client::new();
                 match client
                     .get("https://slack.com/api/auth.test")
@@ -1412,7 +1411,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
                             .unwrap_or("unknown");
                         if ok {
                             println!(
-                                "\r  {} Connected to workspace: {team}        ",
+                                "\r  {} 已连接到工作区：{team}        ",
                                 style("✅").green().bold()
                             );
                         } else {
@@ -1420,38 +1419,35 @@ fn setup_channels() -> Result<ChannelsConfig> {
                                 .get("error")
                                 .and_then(serde_json::Value::as_str)
                                 .unwrap_or("unknown error");
-                            println!("\r  {} Slack error: {err}", style("❌").red().bold());
+                            println!("\r  {} Slack 错误：{err}", style("❌").red().bold());
                             continue;
                         }
                     }
                     _ => {
-                        println!(
-                            "\r  {} Connection failed — check your token",
-                            style("❌").red().bold()
-                        );
+                        println!("\r  {} 连接失败 — 请检查 Token", style("❌").red().bold());
                         continue;
                     }
                 }
 
                 let app_token: String = Input::new()
-                    .with_prompt("  App token (xapp-..., optional, Enter to skip)")
+                    .with_prompt("  App Token（xapp-...，可选，按 Enter 跳过）")
                     .allow_empty(true)
                     .interact_text()?;
 
                 let channel: String = Input::new()
-                    .with_prompt("  Default channel ID (optional, Enter to skip)")
+                    .with_prompt("  默认频道 ID（可选，按 Enter 跳过）")
                     .allow_empty(true)
                     .interact_text()?;
 
-                print_bullet("Allowlist your own Slack member ID first (recommended).");
+                print_bullet("建议先将你自己的 Slack 成员 ID 加入白名单。");
                 print_bullet(
-                    "Member IDs usually start with 'U' (open your Slack profile -> More -> Copy member ID).",
+                    "成员 ID 通常以 'U' 开头（打开你的 Slack 个人资料 -> 更多 -> 复制成员 ID）。",
                 );
-                print_bullet("Use '*' only for temporary open testing.");
+                print_bullet("仅在临时开放测试时使用 '*'。");
 
                 let allowed_users_str: String = Input::new()
                     .with_prompt(
-                        "  Allowed Slack user IDs (comma-separated, recommended: your own member ID, '*' for all)",
+                        "  允许的 Slack 用户 ID（逗号分隔，建议填写你自己的成员 ID，'*' 表示所有）",
                     )
                     .allow_empty(true)
                     .interact_text()?;
@@ -1468,7 +1464,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
 
                 if allowed_users.is_empty() {
                     println!(
-                        "  {} No users allowlisted — Slack inbound messages will be denied until you add IDs or '*'.",
+                        "  {} 白名单为空 — Slack 入站消息将被拒绝，直到你添加 ID 或 '*'。",
                         style("⚠").yellow().bold()
                     );
                 }
@@ -1493,26 +1489,24 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 println!();
                 println!(
                     "  {} {}",
-                    style("iMessage Setup").white().bold(),
-                    style("— macOS only, reads from Messages.app").dim()
+                    style("iMessage 设置").white().bold(),
+                    style("— 仅 macOS，读取 Messages.app").dim()
                 );
 
                 if !cfg!(target_os = "macos") {
                     println!(
-                        "  {} iMessage is only available on macOS.",
+                        "  {} iMessage 仅在 macOS 上可用。",
                         style("⚠").yellow().bold()
                     );
                     continue;
                 }
 
-                print_bullet("Jarvis reads your iMessage database and replies via AppleScript.");
-                print_bullet(
-                    "You need to grant Full Disk Access to your terminal in System Settings.",
-                );
+                print_bullet("Jarvis 读取你的 iMessage 数据库并通过 AppleScript 回复。");
+                print_bullet("你需要在系统设置中为终端授予完全磁盘访问权限。");
                 println!();
 
                 let contacts_str: String = Input::new()
-                    .with_prompt("  Allowed contacts (comma-separated phone/email, or * for all)")
+                    .with_prompt("  允许的联系人（逗号分隔的手机号/邮箱，或 * 表示所有）")
                     .default("*".into())
                     .interact_text()?;
 
@@ -1527,7 +1521,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
 
                 config.imessage = Some(IMessageConfig { allowed_contacts });
                 println!(
-                    "  {} iMessage configured (contacts: {})",
+                    "  {} iMessage 已配置（联系人：{}）",
                     style("✅").green().bold(),
                     style(&contacts_str).cyan()
                 );
@@ -1537,33 +1531,33 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 println!();
                 println!(
                     "  {} {}",
-                    style("Matrix Setup").white().bold(),
-                    style("— self-hosted, federated chat").dim()
+                    style("Matrix 设置").white().bold(),
+                    style("— 自托管、联邦制聊天").dim()
                 );
-                print_bullet("You need a Matrix account and an access token.");
-                print_bullet("Get a token via Element → Settings → Help & About → Access Token.");
+                print_bullet("你需要一个 Matrix 账号和访问令牌。");
+                print_bullet("通过 Element → 设置 → 帮助与关于 → Access Token 获取。");
                 println!();
 
                 let homeserver: String = Input::new()
-                    .with_prompt("  Homeserver URL (e.g. https://matrix.org)")
+                    .with_prompt("  Homeserver URL（例如 https://matrix.org）")
                     .interact_text()?;
 
                 if homeserver.trim().is_empty() {
-                    println!("  {} Skipped", style("→").dim());
+                    println!("  {} 已跳过", style("→").dim());
                     continue;
                 }
 
                 let access_token: String =
-                    Input::new().with_prompt("  Access token").interact_text()?;
+                    Input::new().with_prompt("  访问令牌").interact_text()?;
 
                 if access_token.trim().is_empty() {
-                    println!("  {} Skipped — token required", style("→").dim());
+                    println!("  {} 已跳过 — 需要提供令牌", style("→").dim());
                     continue;
                 }
 
                 // Test connection
                 let hs = homeserver.trim_end_matches('/');
-                print!("  {} Testing connection... ", style("⏳").dim());
+                print!("  {} 正在测试连接... ", style("⏳").dim());
                 let client = reqwest::blocking::Client::new();
                 match client
                     .get(format!("{hs}/_matrix/client/v3/account/whoami"))
@@ -1577,13 +1571,13 @@ fn setup_channels() -> Result<ChannelsConfig> {
                             .and_then(serde_json::Value::as_str)
                             .unwrap_or("unknown");
                         println!(
-                            "\r  {} Connected as {user_id}        ",
+                            "\r  {} 已连接为 {user_id}        ",
                             style("✅").green().bold()
                         );
                     }
                     _ => {
                         println!(
-                            "\r  {} Connection failed — check homeserver URL and token",
+                            "\r  {} 连接失败 — 请检查 Homeserver URL 和令牌",
                             style("❌").red().bold()
                         );
                         continue;
@@ -1591,11 +1585,11 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 }
 
                 let room_id: String = Input::new()
-                    .with_prompt("  Room ID (e.g. !abc123:matrix.org)")
+                    .with_prompt("  房间 ID（例如 !abc123:matrix.org）")
                     .interact_text()?;
 
                 let users_str: String = Input::new()
-                    .with_prompt("  Allowed users (comma-separated @user:server, or * for all)")
+                    .with_prompt("  允许的用户（逗号分隔 @user:server，或 * 表示所有）")
                     .default("*".into())
                     .interact_text()?;
 
@@ -1617,40 +1611,40 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 println!();
                 println!(
                     "  {} {}",
-                    style("WhatsApp Setup").white().bold(),
+                    style("WhatsApp 设置").white().bold(),
                     style("— Business Cloud API").dim()
                 );
-                print_bullet("1. Go to developers.facebook.com and create a WhatsApp app");
-                print_bullet("2. Add the WhatsApp product and get your phone number ID");
-                print_bullet("3. Generate a temporary access token (System User)");
-                print_bullet("4. Configure webhook URL to: https://your-domain/whatsapp");
+                print_bullet("1. 前往 developers.facebook.com 创建 WhatsApp 应用");
+                print_bullet("2. 添加 WhatsApp 产品并获取手机号码 ID");
+                print_bullet("3. 生成临时访问令牌（System User）");
+                print_bullet("4. 配置 Webhook URL 为：https://your-domain/whatsapp");
                 println!();
 
                 let access_token: String = Input::new()
-                    .with_prompt("  Access token (from Meta Developers)")
+                    .with_prompt("  访问令牌（来自 Meta Developers）")
                     .interact_text()?;
 
                 if access_token.trim().is_empty() {
-                    println!("  {} Skipped", style("→").dim());
+                    println!("  {} 已跳过", style("→").dim());
                     continue;
                 }
 
                 let phone_number_id: String = Input::new()
-                    .with_prompt("  Phone number ID (from WhatsApp app settings)")
+                    .with_prompt("  手机号码 ID（来自 WhatsApp 应用设置）")
                     .interact_text()?;
 
                 if phone_number_id.trim().is_empty() {
-                    println!("  {} Skipped — phone number ID required", style("→").dim());
+                    println!("  {} 已跳过 — 需要提供手机号码 ID", style("→").dim());
                     continue;
                 }
 
                 let verify_token: String = Input::new()
-                    .with_prompt("  Webhook verify token (create your own)")
+                    .with_prompt("  Webhook 验证令牌（自行创建）")
                     .default("jarvis-whatsapp-verify".into())
                     .interact_text()?;
 
                 // Test connection
-                print!("  {} Testing connection... ", style("⏳").dim());
+                print!("  {} 正在测试连接... ", style("⏳").dim());
                 let client = reqwest::blocking::Client::new();
                 let url = format!(
                     "https://graph.facebook.com/v18.0/{}",
@@ -1663,13 +1657,13 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 {
                     Ok(resp) if resp.status().is_success() => {
                         println!(
-                            "\r  {} Connected to WhatsApp API        ",
+                            "\r  {} 已连接到 WhatsApp API        ",
                             style("✅").green().bold()
                         );
                     }
                     _ => {
                         println!(
-                            "\r  {} Connection failed — check access token and phone number ID",
+                            "\r  {} 连接失败 — 请检查访问令牌和手机号码 ID",
                             style("❌").red().bold()
                         );
                         continue;
@@ -1677,9 +1671,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 }
 
                 let users_str: String = Input::new()
-                    .with_prompt(
-                        "  Allowed phone numbers (comma-separated +1234567890, or * for all)",
-                    )
+                    .with_prompt("  允许的手机号码（逗号分隔 +1234567890，或 * 表示所有）")
                     .default("*".into())
                     .interact_text()?;
 
@@ -1702,44 +1694,43 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 println!();
                 println!(
                     "  {} {}",
-                    style("IRC Setup").white().bold(),
+                    style("IRC 设置").white().bold(),
                     style("— IRC over TLS").dim()
                 );
-                print_bullet("IRC connects over TLS to any IRC server");
-                print_bullet("Supports SASL PLAIN and NickServ authentication");
+                print_bullet("通过 TLS 连接到任意 IRC 服务器");
+                print_bullet("支持 SASL PLAIN 和 NickServ 认证");
                 println!();
 
                 let server: String = Input::new()
-                    .with_prompt("  IRC server (hostname)")
+                    .with_prompt("  IRC 服务器（主机名）")
                     .interact_text()?;
 
                 if server.trim().is_empty() {
-                    println!("  {} Skipped", style("→").dim());
+                    println!("  {} 已跳过", style("→").dim());
                     continue;
                 }
 
                 let port_str: String = Input::new()
-                    .with_prompt("  Port")
+                    .with_prompt("  端口")
                     .default("6697".into())
                     .interact_text()?;
 
                 let port: u16 = if let Ok(p) = port_str.trim().parse() {
                     p
                 } else {
-                    println!("  {} Invalid port, using 6697", style("→").dim());
+                    println!("  {} 端口无效，使用 6697", style("→").dim());
                     6697
                 };
 
-                let nickname: String =
-                    Input::new().with_prompt("  Bot nickname").interact_text()?;
+                let nickname: String = Input::new().with_prompt("  机器人昵称").interact_text()?;
 
                 if nickname.trim().is_empty() {
-                    println!("  {} Skipped — nickname required", style("→").dim());
+                    println!("  {} 已跳过 — 需要提供昵称", style("→").dim());
                     continue;
                 }
 
                 let channels_str: String = Input::new()
-                    .with_prompt("  Channels to join (comma-separated: #channel1,#channel2)")
+                    .with_prompt("  要加入的频道（逗号分隔：#channel1,#channel2）")
                     .allow_empty(true)
                     .interact_text()?;
 
@@ -1753,13 +1744,11 @@ fn setup_channels() -> Result<ChannelsConfig> {
                         .collect()
                 };
 
-                print_bullet(
-                    "Allowlist nicknames that can interact with the bot (case-insensitive).",
-                );
-                print_bullet("Use '*' to allow anyone (not recommended for production).");
+                print_bullet("将可以与机器人交互的昵称加入白名单（不区分大小写）。");
+                print_bullet("使用 '*' 允许任何人（不建议在生产环境使用）。");
 
                 let users_str: String = Input::new()
-                    .with_prompt("  Allowed nicknames (comma-separated, or * for all)")
+                    .with_prompt("  允许的昵称（逗号分隔，或 * 表示所有）")
                     .allow_empty(true)
                     .interact_text()?;
 
@@ -1774,36 +1763,34 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 };
 
                 if allowed_users.is_empty() {
-                    print_bullet(
-                        "⚠️  Empty allowlist — only you can interact. Add nicknames above.",
-                    );
+                    print_bullet("⚠️  白名单为空 — 仅你自己可以交互。请在上方添加昵称。");
                 }
 
                 println!();
-                print_bullet("Optional authentication (press Enter to skip each):");
+                print_bullet("可选认证（按 Enter 跳过每一项）：");
 
                 let server_password: String = Input::new()
-                    .with_prompt("  Server password (for bouncers like ZNC, leave empty if none)")
+                    .with_prompt("  服务器密码（用于 ZNC 等 bouncer，无则留空）")
                     .allow_empty(true)
                     .interact_text()?;
 
                 let nickserv_password: String = Input::new()
-                    .with_prompt("  NickServ password (leave empty if none)")
+                    .with_prompt("  NickServ 密码（无则留空）")
                     .allow_empty(true)
                     .interact_text()?;
 
                 let sasl_password: String = Input::new()
-                    .with_prompt("  SASL PLAIN password (leave empty if none)")
+                    .with_prompt("  SASL PLAIN 密码（无则留空）")
                     .allow_empty(true)
                     .interact_text()?;
 
                 let verify_tls: bool = Confirm::new()
-                    .with_prompt("  Verify TLS certificate?")
+                    .with_prompt("  验证 TLS 证书？")
                     .default(true)
                     .interact()?;
 
                 println!(
-                    "  {} IRC configured as {}@{}:{}",
+                    "  {} IRC 已配置为 {}@{}:{}",
                     style("✅").green().bold(),
                     style(&nickname).cyan(),
                     style(&server).cyan(),
@@ -1840,17 +1827,17 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 println!();
                 println!(
                     "  {} {}",
-                    style("Webhook Setup").white().bold(),
-                    style("— HTTP endpoint for custom integrations").dim()
+                    style("Webhook 设置").white().bold(),
+                    style("— 用于自定义集成的 HTTP 端点").dim()
                 );
 
                 let port: String = Input::new()
-                    .with_prompt("  Port")
+                    .with_prompt("  端口")
                     .default("8080".into())
                     .interact_text()?;
 
                 let secret: String = Input::new()
-                    .with_prompt("  Secret (optional, Enter to skip)")
+                    .with_prompt("  密钥（可选，按 Enter 跳过）")
                     .allow_empty(true)
                     .interact_text()?;
 
@@ -1863,7 +1850,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
                     },
                 });
                 println!(
-                    "  {} Webhook on port {}",
+                    "  {} Webhook 端口 {}",
                     style("✅").green().bold(),
                     style(&port).cyan()
                 );
@@ -1901,7 +1888,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
     }
 
     println!(
-        "  {} Channels: {}",
+        "  {} 通道：{}",
         style("✓").green().bold(),
         style(active.join(", ")).green()
     );
@@ -1918,20 +1905,20 @@ fn setup_tunnel() -> Result<crate::config::TunnelConfig> {
         TunnelConfig,
     };
 
-    print_bullet("A tunnel exposes your gateway to the internet securely.");
-    print_bullet("Skip this if you only use CLI or local channels.");
+    print_bullet("隧道可以安全地将你的 Gateway 暴露到互联网。");
+    print_bullet("如果仅使用 CLI 或本地通道，可以跳过此步。");
     println!();
 
     let options = vec![
-        "Skip — local only (default)",
-        "Cloudflare Tunnel — Zero Trust, free tier",
-        "Tailscale — private tailnet or public Funnel",
-        "ngrok — instant public URLs",
-        "Custom — bring your own (bore, frp, ssh, etc.)",
+        "跳过 — 仅本地（默认）",
+        "Cloudflare Tunnel — Zero Trust，免费套餐",
+        "Tailscale — 私有 tailnet 或公共 Funnel",
+        "ngrok — 即时公共 URL",
+        "自定义 — 使用你自己的（bore、frp、ssh 等）",
     ];
 
     let choice = Select::new()
-        .with_prompt("  Select tunnel provider")
+        .with_prompt("  选择隧道 Provider")
         .items(&options)
         .default(0)
         .interact()?;
@@ -1939,16 +1926,16 @@ fn setup_tunnel() -> Result<crate::config::TunnelConfig> {
     let config = match choice {
         1 => {
             println!();
-            print_bullet("Get your tunnel token from the Cloudflare Zero Trust dashboard.");
+            print_bullet("从 Cloudflare Zero Trust 控制面板获取隧道 Token。");
             let token: String = Input::new()
-                .with_prompt("  Cloudflare tunnel token")
+                .with_prompt("  Cloudflare 隧道 Token")
                 .interact_text()?;
             if token.trim().is_empty() {
-                println!("  {} Skipped", style("→").dim());
+                println!("  {} 已跳过", style("→").dim());
                 TunnelConfig::default()
             } else {
                 println!(
-                    "  {} Tunnel: {}",
+                    "  {} 隧道：{}",
                     style("✓").green().bold(),
                     style("Cloudflare").green()
                 );
@@ -1961,19 +1948,19 @@ fn setup_tunnel() -> Result<crate::config::TunnelConfig> {
         }
         2 => {
             println!();
-            print_bullet("Tailscale must be installed and authenticated (tailscale up).");
+            print_bullet("Tailscale 必须已安装并认证（tailscale up）。");
             let funnel = Confirm::new()
-                .with_prompt("  Use Funnel (public internet)? No = tailnet only")
+                .with_prompt("  使用 Funnel（公共互联网）？否 = 仅 tailnet")
                 .default(false)
                 .interact()?;
             println!(
-                "  {} Tunnel: {} ({})",
+                "  {} 隧道：{}（{}）",
                 style("✓").green().bold(),
                 style("Tailscale").green(),
                 if funnel {
-                    "Funnel — public"
+                    "Funnel — 公共"
                 } else {
-                    "Serve — tailnet only"
+                    "Serve — 仅 tailnet"
                 }
             );
             TunnelConfig {
@@ -1988,21 +1975,21 @@ fn setup_tunnel() -> Result<crate::config::TunnelConfig> {
         3 => {
             println!();
             print_bullet(
-                "Get your auth token at https://dashboard.ngrok.com/get-started/your-authtoken",
+                "在 https://dashboard.ngrok.com/get-started/your-authtoken 获取认证 Token",
             );
             let auth_token: String = Input::new()
-                .with_prompt("  ngrok auth token")
+                .with_prompt("  ngrok 认证 Token")
                 .interact_text()?;
             if auth_token.trim().is_empty() {
-                println!("  {} Skipped", style("→").dim());
+                println!("  {} 已跳过", style("→").dim());
                 TunnelConfig::default()
             } else {
                 let domain: String = Input::new()
-                    .with_prompt("  Custom domain (optional, Enter to skip)")
+                    .with_prompt("  自定义域名（可选，按 Enter 跳过）")
                     .allow_empty(true)
                     .interact_text()?;
                 println!(
-                    "  {} Tunnel: {}",
+                    "  {} 隧道：{}",
                     style("✓").green().bold(),
                     style("ngrok").green()
                 );
@@ -2022,20 +2009,18 @@ fn setup_tunnel() -> Result<crate::config::TunnelConfig> {
         }
         4 => {
             println!();
-            print_bullet("Enter the command to start your tunnel.");
-            print_bullet("Use {port} and {host} as placeholders.");
-            print_bullet("Example: bore local {port} --to bore.pub");
-            let cmd: String = Input::new()
-                .with_prompt("  Start command")
-                .interact_text()?;
+            print_bullet("输入启动隧道的命令。");
+            print_bullet("使用 {port} 和 {host} 作为占位符。");
+            print_bullet("示例：bore local {port} --to bore.pub");
+            let cmd: String = Input::new().with_prompt("  启动命令").interact_text()?;
             if cmd.trim().is_empty() {
-                println!("  {} Skipped", style("→").dim());
+                println!("  {} 已跳过", style("→").dim());
                 TunnelConfig::default()
             } else {
                 println!(
-                    "  {} Tunnel: {} ({})",
+                    "  {} 隧道：{}（{}）",
                     style("✓").green().bold(),
-                    style("Custom").green(),
+                    style("自定义").green(),
                     style(&cmd).dim()
                 );
                 TunnelConfig {
@@ -2051,9 +2036,9 @@ fn setup_tunnel() -> Result<crate::config::TunnelConfig> {
         }
         _ => {
             println!(
-                "  {} Tunnel: {}",
+                "  {} 隧道：{}",
                 style("✓").green().bold(),
-                style("none (local only)").dim()
+                style("无（仅本地）").dim()
             );
             TunnelConfig::default()
         }
@@ -2311,7 +2296,7 @@ fn scaffold_workspace(workspace_dir: &Path, ctx: &ProjectContext) -> Result<()> 
     }
 
     println!(
-        "  {} Created {} files, skipped {} existing | {} subdirectories",
+        "  {} 已创建 {} 个文件，跳过 {} 个已存在 | {} 个子目录",
         style("✓").green().bold(),
         style(created).green(),
         style(skipped).dim(),
@@ -2320,7 +2305,7 @@ fn scaffold_workspace(workspace_dir: &Path, ctx: &ProjectContext) -> Result<()> 
 
     // Show workspace tree
     println!();
-    println!("  {}", style("Workspace layout:").dim());
+    println!("  {}", style("工作区结构：").dim());
     println!(
         "  {}",
         style(format!("  {}/", workspace_dir.display())).dim()
@@ -2358,7 +2343,7 @@ fn print_summary(config: &Config) {
     println!(
         "  {}  {}",
         style("⚡").cyan(),
-        style("Jarvis is ready!").white().bold()
+        style("Jarvis 已就绪！").white().bold()
     );
     println!(
         "  {}",
@@ -2366,31 +2351,35 @@ fn print_summary(config: &Config) {
     );
     println!();
 
-    println!("  {}", style("Configuration saved to:").dim());
+    println!("  {}", style("配置已保存到：").dim());
     println!("    {}", style(config.config_path.display()).green());
     println!();
 
-    println!("  {}", style("Quick summary:").white().bold());
+    println!("  {}", style("快速摘要：").white().bold());
     println!(
-        "    {} Provider:      {}",
+        "    {} Provider：     {}",
         style("🤖").cyan(),
         config.default_provider.as_deref().unwrap_or("openrouter")
     );
     println!(
-        "    {} Model:         {}",
+        "    {} 模型：         {}",
         style("🧠").cyan(),
-        config.default_model.as_deref().unwrap_or("(default)")
+        config.default_model.as_deref().unwrap_or("（默认）")
     );
     println!(
-        "    {} Autonomy:      {:?}",
+        "    {} 自主等级：     {:?}",
         style("🛡️").cyan(),
         config.autonomy.level
     );
     println!(
-        "    {} Memory:        {} (auto-save: {})",
+        "    {} 记忆：         {}（自动保存：{}）",
         style("🧠").cyan(),
         config.memory.backend,
-        if config.memory.auto_save { "on" } else { "off" }
+        if config.memory.auto_save {
+            "开"
+        } else {
+            "关"
+        }
     );
 
     // Channels summary
@@ -2414,18 +2403,18 @@ fn print_summary(config: &Config) {
         channels.push("Webhook");
     }
     println!(
-        "    {} Channels:      {}",
+        "    {} 通道：         {}",
         style("📡").cyan(),
         channels.join(", ")
     );
 
     println!(
-        "    {} API Key:       {}",
+        "    {} API 密钥：     {}",
         style("🔑").cyan(),
         if config.api_key.is_some() {
-            style("configured").green().to_string()
+            style("已配置").green().to_string()
         } else {
-            style("not set (set via env var or config)")
+            style("未设置（通过环境变量或配置文件设置）")
                 .yellow()
                 .to_string()
         }
@@ -2433,10 +2422,10 @@ fn print_summary(config: &Config) {
 
     // Tunnel
     println!(
-        "    {} Tunnel:        {}",
+        "    {} 隧道：         {}",
         style("🌐").cyan(),
         if config.tunnel.provider == "none" || config.tunnel.provider.is_empty() {
-            "none (local only)".to_string()
+            "无（仅本地）".to_string()
         } else {
             config.tunnel.provider.clone()
         }
@@ -2444,39 +2433,39 @@ fn print_summary(config: &Config) {
 
     // Composio
     println!(
-        "    {} Composio:      {}",
+        "    {} Composio：     {}",
         style("🔗").cyan(),
         if config.composio.enabled {
-            style("enabled (1000+ OAuth apps)").green().to_string()
+            style("已启用（1000+ OAuth 应用）").green().to_string()
         } else {
-            "disabled (sovereign mode)".to_string()
+            "已禁用（自主模式）".to_string()
         }
     );
 
     // Secrets
     println!(
-        "    {} Secrets:       {}",
+        "    {} 密钥存储：     {}",
         style("🔒").cyan(),
         if config.secrets.encrypt {
-            style("encrypted").green().to_string()
+            style("加密").green().to_string()
         } else {
-            style("plaintext").yellow().to_string()
+            style("明文").yellow().to_string()
         }
     );
 
     // Gateway
     println!(
-        "    {} Gateway:       {}",
+        "    {} Gateway：      {}",
         style("🚪").cyan(),
         if config.gateway.require_pairing {
-            "pairing required (secure)"
+            "需要配对（安全）"
         } else {
-            "pairing disabled"
+            "配对已禁用"
         }
     );
 
     println!();
-    println!("  {}", style("Next steps:").white().bold());
+    println!("  {}", style("后续步骤：").white().bold());
     println!();
 
     let mut step = 1u8;
@@ -2484,7 +2473,7 @@ fn print_summary(config: &Config) {
     if config.api_key.is_none() {
         let env_var = provider_env_var(config.default_provider.as_deref().unwrap_or("openrouter"));
         println!(
-            "    {} Set your API key:",
+            "    {} 设置 API 密钥：",
             style(format!("{step}.")).cyan().bold()
         );
         println!(
@@ -2498,9 +2487,9 @@ fn print_summary(config: &Config) {
     // If channels are configured, show channel start as the primary next step
     if has_channels {
         println!(
-            "    {} {} (connected channels → AI → reply):",
+            "    {} {}（已连接通道 → AI → 自动回复）：",
             style(format!("{step}.")).cyan().bold(),
-            style("Launch your channels").white().bold()
+            style("启动你的通道").white().bold()
         );
         println!("       {}", style("jarvis channel start").yellow());
         println!();
@@ -2508,18 +2497,18 @@ fn print_summary(config: &Config) {
     }
 
     println!(
-        "    {} Send a quick message:",
+        "    {} 发送一条快速消息：",
         style(format!("{step}.")).cyan().bold()
     );
     println!(
         "       {}",
-        style("jarvis agent -m \"Hello, Jarvis!\"").yellow()
+        style("jarvis agent -m \"你好，Jarvis！\"").yellow()
     );
     println!();
     step += 1;
 
     println!(
-        "    {} Start interactive CLI mode:",
+        "    {} 启动交互式 CLI 模式：",
         style(format!("{step}.")).cyan().bold()
     );
     println!("       {}", style("jarvis agent").yellow());
@@ -2527,7 +2516,7 @@ fn print_summary(config: &Config) {
     step += 1;
 
     println!(
-        "    {} Check full status:",
+        "    {} 查看完整状态：",
         style(format!("{step}.")).cyan().bold()
     );
     println!("       {}", style("jarvis status").yellow());
@@ -2536,7 +2525,7 @@ fn print_summary(config: &Config) {
     println!(
         "  {} {}",
         style("⚡").cyan(),
-        style("Happy hacking! 🤖").white().bold()
+        style("祝你编码愉快！🤖").white().bold()
     );
     println!();
 }

@@ -29,12 +29,12 @@ impl HeartbeatEngine {
     /// Start the heartbeat loop (runs until cancelled)
     pub async fn run(&self) -> Result<()> {
         if !self.config.enabled {
-            info!("Heartbeat disabled");
+            info!("心跳已禁用");
             return Ok(());
         }
 
         let interval_mins = self.config.interval_minutes.max(5);
-        info!("💓 Heartbeat started: every {} minutes", interval_mins);
+        info!("💓 心跳已启动: 每 {} 分钟执行一次", interval_mins);
 
         let mut interval = time::interval(Duration::from_secs(u64::from(interval_mins) * 60));
 
@@ -45,11 +45,11 @@ impl HeartbeatEngine {
             match self.tick().await {
                 Ok(tasks) => {
                     if tasks > 0 {
-                        info!("💓 Heartbeat: processed {} tasks", tasks);
+                        info!("💓 心跳: 已处理 {} 个任务", tasks);
                     }
                 }
                 Err(e) => {
-                    warn!("💓 Heartbeat error: {}", e);
+                    warn!("💓 心跳错误: {}", e);
                     self.observer.record_event(&ObserverEvent::Error {
                         component: "heartbeat".into(),
                         message: e.to_string(),

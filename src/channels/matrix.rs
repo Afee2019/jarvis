@@ -103,7 +103,7 @@ impl MatrixChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Matrix whoami failed: {err}");
+            anyhow::bail!("Matrix whoami 失败: {err}");
         }
 
         let who: WhoAmIResponse = resp.json().await?;
@@ -139,14 +139,14 @@ impl Channel for MatrixChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Matrix send failed: {err}");
+            anyhow::bail!("Matrix 发送失败: {err}");
         }
 
         Ok(())
     }
 
     async fn listen(&self, tx: mpsc::Sender<ChannelMessage>) -> anyhow::Result<()> {
-        tracing::info!("Matrix channel listening on room {}...", self.room_id);
+        tracing::info!("Matrix 通道正在监听房间 {}...", self.room_id);
 
         let my_user_id = self.get_my_user_id().await?;
 
@@ -165,7 +165,7 @@ impl Channel for MatrixChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Matrix initial sync failed: {err}");
+            anyhow::bail!("Matrix 初始同步失败: {err}");
         }
 
         let sync: SyncResponse = resp.json().await?;
@@ -188,7 +188,7 @@ impl Channel for MatrixChannel {
             let resp = match resp {
                 Ok(r) => r,
                 Err(e) => {
-                    tracing::warn!("Matrix sync error: {e}, retrying...");
+                    tracing::warn!("Matrix 同步出错: {e}，正在重试...");
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     continue;
                 }

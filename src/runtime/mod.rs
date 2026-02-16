@@ -11,17 +11,15 @@ pub fn create_runtime(config: &RuntimeConfig) -> anyhow::Result<Box<dyn RuntimeA
     match config.kind.as_str() {
         "native" => Ok(Box::new(NativeRuntime::new())),
         "docker" => anyhow::bail!(
-            "runtime.kind='docker' is not implemented yet. Use runtime.kind='native' until container runtime support lands."
+            "runtime.kind='docker' 尚未实现。请使用 runtime.kind='native'，等待容器运行时支持。"
         ),
-        "cloudflare" => anyhow::bail!(
-            "runtime.kind='cloudflare' is not implemented yet. Use runtime.kind='native' for now."
-        ),
-        other if other.trim().is_empty() => anyhow::bail!(
-            "runtime.kind cannot be empty. Supported values: native"
-        ),
-        other => anyhow::bail!(
-            "Unknown runtime kind '{other}'. Supported values: native"
-        ),
+        "cloudflare" => {
+            anyhow::bail!("runtime.kind='cloudflare' 尚未实现。请暂时使用 runtime.kind='native'。")
+        }
+        other if other.trim().is_empty() => {
+            anyhow::bail!("runtime.kind 不能为空。支持的值: native")
+        }
+        other => anyhow::bail!("未知的运行时类型「{other}」。支持的值: native"),
     }
 }
 
@@ -45,7 +43,7 @@ mod tests {
             kind: "docker".into(),
         };
         match create_runtime(&cfg) {
-            Err(err) => assert!(err.to_string().contains("not implemented")),
+            Err(err) => assert!(err.to_string().contains("尚未实现")),
             Ok(_) => panic!("docker runtime should error"),
         }
     }
@@ -56,7 +54,7 @@ mod tests {
             kind: "cloudflare".into(),
         };
         match create_runtime(&cfg) {
-            Err(err) => assert!(err.to_string().contains("not implemented")),
+            Err(err) => assert!(err.to_string().contains("尚未实现")),
             Ok(_) => panic!("cloudflare runtime should error"),
         }
     }
@@ -67,7 +65,7 @@ mod tests {
             kind: "wasm-edge-unknown".into(),
         };
         match create_runtime(&cfg) {
-            Err(err) => assert!(err.to_string().contains("Unknown runtime kind")),
+            Err(err) => assert!(err.to_string().contains("未知的运行时类型")),
             Ok(_) => panic!("unknown runtime should error"),
         }
     }
@@ -78,7 +76,7 @@ mod tests {
             kind: String::new(),
         };
         match create_runtime(&cfg) {
-            Err(err) => assert!(err.to_string().contains("cannot be empty")),
+            Err(err) => assert!(err.to_string().contains("不能为空")),
             Ok(_) => panic!("empty runtime should error"),
         }
     }

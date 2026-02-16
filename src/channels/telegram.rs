@@ -67,10 +67,10 @@ impl TelegramChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Telegram sendDocument failed: {err}");
+            anyhow::bail!("Telegram sendDocument 失败: {err}");
         }
 
-        tracing::info!("Telegram document sent to {chat_id}: {file_name}");
+        tracing::info!("Telegram 文档已发送至 {chat_id}: {file_name}");
         Ok(())
     }
 
@@ -101,10 +101,10 @@ impl TelegramChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Telegram sendDocument failed: {err}");
+            anyhow::bail!("Telegram sendDocument 失败: {err}");
         }
 
-        tracing::info!("Telegram document sent to {chat_id}: {file_name}");
+        tracing::info!("Telegram 文档已发送至 {chat_id}: {file_name}");
         Ok(())
     }
 
@@ -140,10 +140,10 @@ impl TelegramChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Telegram sendPhoto failed: {err}");
+            anyhow::bail!("Telegram sendPhoto 失败: {err}");
         }
 
-        tracing::info!("Telegram photo sent to {chat_id}: {file_name}");
+        tracing::info!("Telegram 图片已发送至 {chat_id}: {file_name}");
         Ok(())
     }
 
@@ -174,10 +174,10 @@ impl TelegramChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Telegram sendPhoto failed: {err}");
+            anyhow::bail!("Telegram sendPhoto 失败: {err}");
         }
 
-        tracing::info!("Telegram photo sent to {chat_id}: {file_name}");
+        tracing::info!("Telegram 图片已发送至 {chat_id}: {file_name}");
         Ok(())
     }
 
@@ -213,10 +213,10 @@ impl TelegramChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Telegram sendVideo failed: {err}");
+            anyhow::bail!("Telegram sendVideo 失败: {err}");
         }
 
-        tracing::info!("Telegram video sent to {chat_id}: {file_name}");
+        tracing::info!("Telegram 视频已发送至 {chat_id}: {file_name}");
         Ok(())
     }
 
@@ -252,10 +252,10 @@ impl TelegramChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Telegram sendAudio failed: {err}");
+            anyhow::bail!("Telegram sendAudio 失败: {err}");
         }
 
-        tracing::info!("Telegram audio sent to {chat_id}: {file_name}");
+        tracing::info!("Telegram 音频已发送至 {chat_id}: {file_name}");
         Ok(())
     }
 
@@ -291,10 +291,10 @@ impl TelegramChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Telegram sendVoice failed: {err}");
+            anyhow::bail!("Telegram sendVoice 失败: {err}");
         }
 
-        tracing::info!("Telegram voice sent to {chat_id}: {file_name}");
+        tracing::info!("Telegram 语音已发送至 {chat_id}: {file_name}");
         Ok(())
     }
 
@@ -323,10 +323,10 @@ impl TelegramChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Telegram sendDocument by URL failed: {err}");
+            anyhow::bail!("Telegram 通过 URL 发送文档失败: {err}");
         }
 
-        tracing::info!("Telegram document (URL) sent to {chat_id}: {url}");
+        tracing::info!("Telegram 文档（URL）已发送至 {chat_id}: {url}");
         Ok(())
     }
 
@@ -355,10 +355,10 @@ impl TelegramChannel {
 
         if !resp.status().is_success() {
             let err = resp.text().await?;
-            anyhow::bail!("Telegram sendPhoto by URL failed: {err}");
+            anyhow::bail!("Telegram 通过 URL 发送图片失败: {err}");
         }
 
-        tracing::info!("Telegram photo (URL) sent to {chat_id}: {url}");
+        tracing::info!("Telegram 图片（URL）已发送至 {chat_id}: {url}");
         Ok(())
     }
 }
@@ -388,8 +388,8 @@ impl Channel for TelegramChannel {
             let err = resp
                 .text()
                 .await
-                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
-            anyhow::bail!("Telegram sendMessage failed ({status}): {err}");
+                .unwrap_or_else(|e| format!("<无法读取响应体: {e}>"));
+            anyhow::bail!("Telegram sendMessage 失败 ({status}): {err}");
         }
 
         Ok(())
@@ -398,7 +398,7 @@ impl Channel for TelegramChannel {
     async fn listen(&self, tx: tokio::sync::mpsc::Sender<ChannelMessage>) -> anyhow::Result<()> {
         let mut offset: i64 = 0;
 
-        tracing::info!("Telegram channel listening for messages...");
+        tracing::info!("Telegram 通道正在监听消息...");
 
         loop {
             let url = self.api_url("getUpdates");
@@ -411,7 +411,7 @@ impl Channel for TelegramChannel {
             let resp = match self.client.post(&url).json(&body).send().await {
                 Ok(r) => r,
                 Err(e) => {
-                    tracing::warn!("Telegram poll error: {e}");
+                    tracing::warn!("Telegram 轮询出错: {e}");
                     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     continue;
                 }
@@ -420,7 +420,7 @@ impl Channel for TelegramChannel {
             let data: serde_json::Value = match resp.json().await {
                 Ok(d) => d,
                 Err(e) => {
-                    tracing::warn!("Telegram parse error: {e}");
+                    tracing::warn!("Telegram 解析出错: {e}");
                     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     continue;
                 }
@@ -460,8 +460,8 @@ impl Channel for TelegramChannel {
 
                     if !self.is_any_user_allowed(identities.iter().copied()) {
                         tracing::warn!(
-                            "Telegram: ignoring message from unauthorized user: username={username}, user_id={}. \
-Allowlist Telegram @username or numeric user ID, then run `jarvis onboard --channels-only`.",
+                            "Telegram: 忽略未授权用户的消息: username={username}, user_id={}。\
+请将 Telegram @username 或数字用户 ID 添加到白名单，然后运行 `jarvis onboard --channels-only`。",
                             user_id_str.as_deref().unwrap_or("unknown")
                         );
                         continue;

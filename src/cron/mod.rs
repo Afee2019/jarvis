@@ -24,20 +24,20 @@ pub fn handle_command(command: crate::CronCommands, config: &Config) -> Result<(
         crate::CronCommands::List => {
             let jobs = list_jobs(config)?;
             if jobs.is_empty() {
-                println!("No scheduled tasks yet.");
-                println!("\nUsage:");
+                println!("暂无定时任务。");
+                println!("\n用法:");
                 println!("  jarvis cron add '0 9 * * *' 'agent -m \"Good morning!\"'");
                 return Ok(());
             }
 
-            println!("🕒 Scheduled jobs ({}):", jobs.len());
+            println!("🕒 定时任务 ({}):", jobs.len());
             for job in jobs {
                 let last_run = job
                     .last_run
-                    .map_or_else(|| "never".into(), |d| d.to_rfc3339());
-                let last_status = job.last_status.unwrap_or_else(|| "n/a".into());
+                    .map_or_else(|| "从未执行".into(), |d| d.to_rfc3339());
+                let last_status = job.last_status.unwrap_or_else(|| "无".into());
                 println!(
-                    "- {} | {} | next={} | last={} ({})\n    cmd: {}",
+                    "- {} | {} | 下次={} | 上次={} ({})\n    命令: {}",
                     job.id,
                     job.expression,
                     job.next_run.to_rfc3339(),
@@ -53,10 +53,10 @@ pub fn handle_command(command: crate::CronCommands, config: &Config) -> Result<(
             command,
         } => {
             let job = add_job(config, &expression, &command)?;
-            println!("✅ Added cron job {}", job.id);
-            println!("  Expr: {}", job.expression);
-            println!("  Next: {}", job.next_run.to_rfc3339());
-            println!("  Cmd : {}", job.command);
+            println!("✅ 已添加定时任务 {}", job.id);
+            println!("  表达式: {}", job.expression);
+            println!("  下次执行: {}", job.next_run.to_rfc3339());
+            println!("  命令:     {}", job.command);
             Ok(())
         }
         crate::CronCommands::Remove { id } => remove_job(config, &id),
@@ -80,7 +80,7 @@ pub fn add_job(config: &Config, expression: &str, command: &str) -> Result<CronJ
                 next_run.to_rfc3339()
             ],
         )
-        .context("Failed to insert cron job")?;
+        .context("插入定时任务失败")?;
         Ok(())
     })?;
 
@@ -136,14 +136,14 @@ pub fn list_jobs(config: &Config) -> Result<Vec<CronJob>> {
 pub fn remove_job(config: &Config, id: &str) -> Result<()> {
     let changed = with_connection(config, |conn| {
         conn.execute("DELETE FROM cron_jobs WHERE id = ?1", params![id])
-            .context("Failed to delete cron job")
+            .context("删除定时任务失败")
     })?;
 
     if changed == 0 {
-        anyhow::bail!("Cron job '{id}' not found");
+        anyhow::bail!("定时任务「{id}」未找到");
     }
 
-    println!("✅ Removed cron job {id}");
+    println!("✅ 已移除定时任务 {id}");
     Ok(())
 }
 
@@ -209,7 +209,7 @@ pub fn reschedule_after_run(
                 job.id
             ],
         )
-        .context("Failed to update cron job run state")?;
+        .context("更新定时任务运行状态失败")?;
         Ok(())
     })
 }
@@ -217,11 +217,11 @@ pub fn reschedule_after_run(
 fn next_run_for(expression: &str, from: DateTime<Utc>) -> Result<DateTime<Utc>> {
     let normalized = normalize_expression(expression)?;
     let schedule = Schedule::from_str(&normalized)
-        .with_context(|| format!("Invalid cron expression: {expression}"))?;
+        .with_context(|| format!("无效的 cron 表达式: {expression}"))?;
     schedule
         .after(&from)
         .next()
-        .ok_or_else(|| anyhow::anyhow!("No future occurrence for expression: {expression}"))
+        .ok_or_else(|| anyhow::anyhow!("表达式无未来执行时间: {expression}"))
 }
 
 fn normalize_expression(expression: &str) -> Result<String> {
@@ -234,14 +234,14 @@ fn normalize_expression(expression: &str) -> Result<String> {
         // crate-native syntax includes seconds (+ optional year)
         6 | 7 => Ok(expression.to_string()),
         _ => anyhow::bail!(
-            "Invalid cron expression: {expression} (expected 5, 6, or 7 fields, got {field_count})"
+            "无效的 cron 表达式: {expression}（期望 5、6 或 7 个字段，实际为 {field_count}）"
         ),
     }
 }
 
 fn parse_rfc3339(raw: &str) -> Result<DateTime<Utc>> {
     let parsed = DateTime::parse_from_rfc3339(raw)
-        .with_context(|| format!("Invalid RFC3339 timestamp in cron DB: {raw}"))?;
+        .with_context(|| format!("定时任务数据库中的 RFC3339 时间戳无效: {raw}"))?;
     Ok(parsed.with_timezone(&Utc))
 }
 
@@ -249,11 +249,11 @@ fn with_connection<T>(config: &Config, f: impl FnOnce(&Connection) -> Result<T>)
     let db_path = config.workspace_dir.join("cron").join("jobs.db");
     if let Some(parent) = db_path.parent() {
         std::fs::create_dir_all(parent)
-            .with_context(|| format!("Failed to create cron directory: {}", parent.display()))?;
+            .with_context(|| format!("创建定时任务目录失败: {}", parent.display()))?;
     }
 
     let conn = Connection::open(&db_path)
-        .with_context(|| format!("Failed to open cron DB: {}", db_path.display()))?;
+        .with_context(|| format!("打开定时任务数据库失败: {}", db_path.display()))?;
 
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS cron_jobs (
@@ -268,7 +268,7 @@ fn with_connection<T>(config: &Config, f: impl FnOnce(&Connection) -> Result<T>)
         );
         CREATE INDEX IF NOT EXISTS idx_cron_jobs_next_run ON cron_jobs(next_run);",
     )
-    .context("Failed to initialize cron schema")?;
+    .context("初始化定时任务表结构失败")?;
 
     f(&conn)
 }
@@ -307,7 +307,7 @@ mod tests {
         let config = test_config(&tmp);
 
         let err = add_job(&config, "* * * *", "echo bad").unwrap_err();
-        assert!(err.to_string().contains("expected 5, 6, or 7 fields"));
+        assert!(err.to_string().contains("期望 5、6 或 7 个字段"));
     }
 
     #[test]

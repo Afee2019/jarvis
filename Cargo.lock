@@ -1245,7 +1245,7 @@ checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
 name = "jarvis"
-version = "0.1.0"
+version = "2.1.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1264,6 +1264,7 @@ dependencies = [
  "hostname",
  "http-body-util",
  "lettre",
+ "libc",
  "mail-parser",
  "ratatui",
  "reqwest",

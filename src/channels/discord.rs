@@ -100,8 +100,8 @@ impl Channel for DiscordChannel {
             let err = resp
                 .text()
                 .await
-                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
-            anyhow::bail!("Discord send message failed ({status}): {err}");
+                .unwrap_or_else(|e| format!("<无法读取响应体: {e}>"));
+            anyhow::bail!("Discord 发送消息失败 ({status}): {err}");
         }
 
         Ok(())
@@ -127,13 +127,16 @@ impl Channel for DiscordChannel {
             .unwrap_or("wss://gateway.discord.gg");
 
         let ws_url = format!("{gw_url}/?v=10&encoding=json");
-        tracing::info!("Discord: connecting to gateway...");
+        tracing::info!("Discord: 正在连接 Gateway...");
 
         let (ws_stream, _) = tokio_tungstenite::connect_async(&ws_url).await?;
         let (mut write, mut read) = ws_stream.split();
 
         // Read Hello (opcode 10)
-        let hello = read.next().await.ok_or(anyhow::anyhow!("No hello"))??;
+        let hello = read
+            .next()
+            .await
+            .ok_or(anyhow::anyhow!("未收到 Hello 消息"))??;
         let hello_data: serde_json::Value = serde_json::from_str(&hello.to_string())?;
         let heartbeat_interval = hello_data
             .get("d")
@@ -156,7 +159,7 @@ impl Channel for DiscordChannel {
         });
         write.send(Message::Text(identify.to_string())).await?;
 
-        tracing::info!("Discord: connected and identified");
+        tracing::info!("Discord: 已连接并完成身份验证");
 
         // Track the last sequence number for heartbeats and resume.
         // Only accessed in the select! loop below, so a plain i64 suffices.
@@ -218,12 +221,12 @@ impl Channel for DiscordChannel {
                         }
                         // Op 7: Reconnect
                         7 => {
-                            tracing::warn!("Discord: received Reconnect (op 7), closing for restart");
+                            tracing::warn!("Discord: 收到重连请求 (op 7)，关闭连接准备重启");
                             break;
                         }
                         // Op 9: Invalid Session
                         9 => {
-                            tracing::warn!("Discord: received Invalid Session (op 9), closing for restart");
+                            tracing::warn!("Discord: 收到无效会话 (op 9)，关闭连接准备重启");
                             break;
                         }
                         _ => {}
@@ -252,7 +255,7 @@ impl Channel for DiscordChannel {
 
                     // Sender validation
                     if !self.is_user_allowed(author_id) {
-                        tracing::warn!("Discord: ignoring message from unauthorized user: {author_id}");
+                        tracing::warn!("Discord: 忽略未授权用户的消息: {author_id}");
                         continue;
                     }
 

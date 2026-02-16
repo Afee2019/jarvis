@@ -1,7 +1,7 @@
 [package]
 name = "jarvis"
-version = "0.1.0"
-edition = "2021"
+version = "2.1.2"
+edition = "2024"
 authors = ["Afee2019"]
 license = "MIT"
 description = "Your AI, your rules. The fastest, smallest AI assistant."
@@ -36,6 +36,9 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["f
 # Error handling
 anyhow = "1.0"
 thiserror = "2.0"
+
+# Unix signal handling
+libc = "0.2"
 
 # UUID generation
 uuid = { version = "1.11", default-features = false, features = ["v4", "std"] }

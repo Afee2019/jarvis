@@ -40,101 +40,101 @@ pub mod util;
 
 pub use config::Config;
 
-/// Service management subcommands
+/// 服务管理子命令
 #[derive(Subcommand, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ServiceCommands {
-    /// Install daemon service unit for auto-start and restart
+    /// 安装守护进程服务单元，支持自动启动和重启
     Install,
-    /// Start daemon service
+    /// 启动守护进程服务
     Start,
-    /// Stop daemon service
+    /// 停止守护进程服务
     Stop,
-    /// Check daemon service status
+    /// 查看守护进程服务状态
     Status,
-    /// Uninstall daemon service unit
+    /// 卸载守护进程服务单元
     Uninstall,
 }
 
-/// Channel management subcommands
+/// 通道管理子命令
 #[derive(Subcommand, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ChannelCommands {
-    /// List all configured channels
+    /// 列出所有已配置的通道
     List,
-    /// Start all configured channels (handled in main.rs for async)
+    /// 启动所有已配置的通道（在 main.rs 中异步处理）
     Start,
-    /// Run health checks for configured channels (handled in main.rs for async)
+    /// 运行已配置通道的健康检查（在 main.rs 中异步处理）
     Doctor,
-    /// Add a new channel configuration
+    /// 添加新的通道配置
     Add {
-        /// Channel type (telegram, discord, slack, whatsapp, matrix, imessage, email)
+        /// 通道类型（telegram、discord、slack、whatsapp、matrix、imessage、email）
         channel_type: String,
-        /// Optional configuration as JSON
+        /// 可选的 JSON 配置
         config: String,
     },
-    /// Remove a channel configuration
+    /// 移除通道配置
     Remove {
-        /// Channel name to remove
+        /// 要移除的通道名称
         name: String,
     },
 }
 
-/// Skills management subcommands
+/// 技能管理子命令
 #[derive(Subcommand, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SkillCommands {
-    /// List all installed skills
+    /// 列出所有已安装的技能
     List,
-    /// Install a new skill from a URL or local path
+    /// 从 URL 或本地路径安装新技能
     Install {
-        /// Source URL or local path
+        /// 来源 URL 或本地路径
         source: String,
     },
-    /// Remove an installed skill
+    /// 移除已安装的技能
     Remove {
-        /// Skill name to remove
+        /// 要移除的技能名称
         name: String,
     },
 }
 
-/// Migration subcommands
+/// 迁移子命令
 #[derive(Subcommand, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum MigrateCommands {
-    /// Import memory from an `OpenClaw` workspace into this `Jarvis` workspace
+    /// 从 `OpenClaw` 工作区导入记忆到当前 `Jarvis` 工作区
     Openclaw {
-        /// Optional path to `OpenClaw` workspace (defaults to ~/.openclaw/workspace)
+        /// `OpenClaw` 工作区路径（可选，默认 ~/.openclaw/workspace）
         #[arg(long)]
         source: Option<std::path::PathBuf>,
 
-        /// Validate and preview migration without writing any data
+        /// 仅验证和预览迁移，不写入任何数据
         #[arg(long)]
         dry_run: bool,
     },
 }
 
-/// Cron subcommands
+/// 定时任务子命令
 #[derive(Subcommand, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CronCommands {
-    /// List all scheduled tasks
+    /// 列出所有定时任务
     List,
-    /// Add a new scheduled task
+    /// 添加新的定时任务
     Add {
-        /// Cron expression
+        /// Cron 表达式
         expression: String,
-        /// Command to run
+        /// 要执行的命令
         command: String,
     },
-    /// Remove a scheduled task
+    /// 移除定时任务
     Remove {
-        /// Task ID
+        /// 任务 ID
         id: String,
     },
 }
 
-/// Integration subcommands
+/// 集成子命令
 #[derive(Subcommand, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum IntegrationCommands {
-    /// Show details about a specific integration
+    /// 显示指定集成的详细信息
     Info {
-        /// Integration name
+        /// 集成名称
         name: String,
     },
 }

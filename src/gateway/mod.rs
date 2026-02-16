@@ -55,9 +55,9 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
     if is_public_bind(host) && config.tunnel.provider == "none" && !config.gateway.allow_public_bind
     {
         anyhow::bail!(
-            "🛑 Refusing to bind to {host} — gateway would be exposed to the internet.\n\
-             Fix: use --host 127.0.0.1 (default), configure a tunnel, or set\n\
-             [gateway] allow_public_bind = true in config.toml (NOT recommended)."
+            "🛑 拒绝绑定到 {host} — gateway 将暴露在公网上。\n\
+             修复方法：使用 --host 127.0.0.1（默认值）、配置隧道、或在 config.toml 中设置\n\
+             [gateway] allow_public_bind = true（不推荐）。"
         );
     }
 
@@ -131,46 +131,46 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
     let mut tunnel_url: Option<String> = None;
 
     if let Some(ref tun) = tunnel {
-        println!("🔗 Starting {} tunnel...", tun.name());
+        println!("🔗 正在启动 {} 隧道...", tun.name());
         match tun.start(host, actual_port).await {
             Ok(url) => {
-                println!("🌐 Tunnel active: {url}");
+                println!("🌐 隧道已激活：{url}");
                 tunnel_url = Some(url);
             }
             Err(e) => {
-                println!("⚠️  Tunnel failed to start: {e}");
-                println!("   Falling back to local-only mode.");
+                println!("⚠️  隧道启动失败：{e}");
+                println!("   回退到仅本地模式。");
             }
         }
     }
 
-    println!("🤖 Jarvis Gateway listening on http://{display_addr}");
+    println!("🤖 Jarvis Gateway 正在监听 http://{display_addr}");
     if let Some(ref url) = tunnel_url {
-        println!("  🌐 Public URL: {url}");
+        println!("  🌐 公网地址：{url}");
     }
-    println!("  POST /pair      — pair a new client (X-Pairing-Code header)");
-    println!("  POST /webhook   — {{\"message\": \"your prompt\"}}");
+    println!("  POST /pair      — 配对新客户端（X-Pairing-Code 请求头）");
+    println!("  POST /webhook   — {{\"message\": \"你的提示\"}}");
     if whatsapp_channel.is_some() {
-        println!("  GET  /whatsapp  — Meta webhook verification");
-        println!("  POST /whatsapp  — WhatsApp message webhook");
+        println!("  GET  /whatsapp  — Meta webhook 验证");
+        println!("  POST /whatsapp  — WhatsApp 消息 webhook");
     }
-    println!("  GET  /health    — health check");
+    println!("  GET  /health    — 健康检查");
     if let Some(code) = pairing.pairing_code() {
         println!();
-        println!("  🔐 PAIRING REQUIRED — use this one-time code:");
+        println!("  🔐 需要配对 — 请使用此一次性配对码：");
         println!("     ┌──────────────┐");
         println!("     │  {code}  │");
         println!("     └──────────────┘");
-        println!("     Send: POST /pair with header X-Pairing-Code: {code}");
+        println!("     发送：POST /pair，请求头 X-Pairing-Code: {code}");
     } else if pairing.require_pairing() {
-        println!("  🔒 Pairing: ACTIVE (bearer token required)");
+        println!("  🔒 配对：已启用（需要 bearer token）");
     } else {
-        println!("  ⚠️  Pairing: DISABLED (all requests accepted)");
+        println!("  ⚠️  配对：已禁用（接受所有请求）");
     }
     if webhook_secret.is_some() {
-        println!("  🔒 Webhook secret: ENABLED");
+        println!("  🔒 Webhook secret：已启用");
     }
-    println!("  Press Ctrl+C to stop.\n");
+    println!("  按 Ctrl+C 停止。\n");
 
     crate::health::mark_component_ok("gateway");
 
@@ -230,7 +230,7 @@ async fn handle_pair(State(state): State<AppState>, headers: HeaderMap) -> impl 
 
     match state.pairing.try_pair(code) {
         Ok(Some(token)) => {
-            tracing::info!("🔐 New client paired successfully");
+            tracing::info!("🔐 新客户端配对成功");
             let body = serde_json::json!({
                 "paired": true,
                 "token": token,
@@ -239,14 +239,12 @@ async fn handle_pair(State(state): State<AppState>, headers: HeaderMap) -> impl 
             (StatusCode::OK, Json(body))
         }
         Ok(None) => {
-            tracing::warn!("🔐 Pairing attempt with invalid code");
+            tracing::warn!("🔐 配对尝试失败：无效的配对码");
             let err = serde_json::json!({"error": "Invalid pairing code"});
             (StatusCode::FORBIDDEN, Json(err))
         }
         Err(lockout_secs) => {
-            tracing::warn!(
-                "🔐 Pairing locked out — too many failed attempts ({lockout_secs}s remaining)"
-            );
+            tracing::warn!("🔐 配对已锁定 — 失败次数过多（剩余 {lockout_secs} 秒）");
             let err = serde_json::json!({
                 "error": format!("Too many failed attempts. Try again in {lockout_secs}s."),
                 "retry_after": lockout_secs
@@ -276,7 +274,7 @@ async fn handle_webhook(
             .unwrap_or("");
         let token = auth.strip_prefix("Bearer ").unwrap_or("");
         if !state.pairing.is_authenticated(token) {
-            tracing::warn!("Webhook: rejected — not paired / invalid bearer token");
+            tracing::warn!("Webhook：已拒绝 — 未配对或 bearer token 无效");
             let err = serde_json::json!({
                 "error": "Unauthorized — pair first via POST /pair, then send Authorization: Bearer <token>"
             });
@@ -292,7 +290,7 @@ async fn handle_webhook(
         match header_val {
             Some(val) if constant_time_eq(val, secret.as_ref()) => {}
             _ => {
-                tracing::warn!("Webhook: rejected request — invalid or missing X-Webhook-Secret");
+                tracing::warn!("Webhook：已拒绝请求 — X-Webhook-Secret 无效或缺失");
                 let err = serde_json::json!({"error": "Unauthorized — invalid or missing X-Webhook-Secret header"});
                 return (StatusCode::UNAUTHORIZED, Json(err));
             }
@@ -330,7 +328,7 @@ async fn handle_webhook(
         }
         Err(e) => {
             tracing::error!(
-                "Webhook provider error: {}",
+                "Webhook provider 错误：{}",
                 providers::sanitize_api_error(&e.to_string())
             );
             let err = serde_json::json!({"error": "LLM request failed"});
@@ -366,13 +364,13 @@ async fn handle_whatsapp_verify(
         .is_some_and(|t| constant_time_eq(t, wa.verify_token()));
     if params.mode.as_deref() == Some("subscribe") && token_matches {
         if let Some(ch) = params.challenge {
-            tracing::info!("WhatsApp webhook verified successfully");
+            tracing::info!("WhatsApp webhook 验证成功");
             return (StatusCode::OK, ch);
         }
         return (StatusCode::BAD_REQUEST, "Missing hub.challenge".to_string());
     }
 
-    tracing::warn!("WhatsApp webhook verification failed — token mismatch");
+    tracing::warn!("WhatsApp webhook 验证失败 — token 不匹配");
     (StatusCode::FORBIDDEN, "Forbidden".to_string())
 }
 
@@ -425,11 +423,11 @@ async fn handle_whatsapp_message(
 
         if !verify_whatsapp_signature(app_secret, &body, signature) {
             tracing::warn!(
-                "WhatsApp webhook signature verification failed (signature: {})",
+                "WhatsApp webhook 签名验证失败（签名：{}）",
                 if signature.is_empty() {
-                    "missing"
+                    "缺失"
                 } else {
-                    "invalid"
+                    "无效"
                 }
             );
             return (
@@ -458,7 +456,7 @@ async fn handle_whatsapp_message(
     // Process each message
     for msg in &messages {
         tracing::info!(
-            "WhatsApp message from {}: {}",
+            "收到来自 {} 的 WhatsApp 消息：{}",
             msg.sender,
             truncate_with_ellipsis(&msg.content, 50)
         );
@@ -484,17 +482,12 @@ async fn handle_whatsapp_message(
             Ok(response) => {
                 // Send reply via WhatsApp
                 if let Err(e) = wa.send(&response, &msg.sender).await {
-                    tracing::error!("Failed to send WhatsApp reply: {e}");
+                    tracing::error!("发送 WhatsApp 回复失败：{e}");
                 }
             }
             Err(e) => {
-                tracing::error!("LLM error for WhatsApp message: {e:#}");
-                let _ = wa
-                    .send(
-                        "Sorry, I couldn't process your message right now.",
-                        &msg.sender,
-                    )
-                    .await;
+                tracing::error!("WhatsApp 消息的 LLM 调用出错：{e:#}");
+                let _ = wa.send("抱歉，暂时无法处理您的消息。", &msg.sender).await;
             }
         }
     }

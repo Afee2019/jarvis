@@ -8,9 +8,10 @@
     dead_code
 )]
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use tracing::{info, Level};
+use tracing_subscriber::fmt::time::FormatTime;
 use tracing_subscriber::FmtSubscriber;
 
 mod agent;
@@ -40,12 +41,12 @@ mod util;
 
 use config::Config;
 
-/// `Jarvis` - Your AI, your rules.
+/// `Jarvis` - 你的 AI，你做主。
 #[derive(Parser, Debug)]
 #[command(name = "jarvis")]
 #[command(author = "Afee2019")]
 #[command(version = "0.1.0")]
-#[command(about = "The fastest, smallest AI assistant.", long_about = None)]
+#[command(about = "最快、最轻量的 AI 助手。", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -53,140 +54,148 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum ServiceCommands {
-    /// Install daemon service unit for auto-start and restart
+    /// 安装守护进程服务单元，支持自动启动和重启
     Install,
-    /// Start daemon service
+    /// 启动守护进程服务
     Start,
-    /// Stop daemon service
+    /// 停止守护进程服务
     Stop,
-    /// Check daemon service status
+    /// 查看守护进程服务状态
     Status,
-    /// Uninstall daemon service unit
+    /// 卸载守护进程服务单元
     Uninstall,
 }
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Initialize your workspace and configuration
+    /// 初始化工作区和配置
     Onboard {
-        /// Run the full interactive wizard (default is quick setup)
+        /// 运行完整的交互式向导（默认为快速设置）
         #[arg(long)]
         interactive: bool,
 
-        /// Reconfigure channels only (fast repair flow)
+        /// 仅重新配置通道（快速修复流程）
         #[arg(long)]
         channels_only: bool,
 
-        /// API key (used in quick mode, ignored with --interactive)
+        /// API 密钥（快速模式下使用，--interactive 时忽略）
         #[arg(long)]
         api_key: Option<String>,
 
-        /// Provider name (used in quick mode, default: openrouter)
+        /// Provider 名称（快速模式下使用，默认：openrouter）
         #[arg(long)]
         provider: Option<String>,
 
-        /// Memory backend (sqlite, markdown, none) - used in quick mode, default: sqlite
+        /// 记忆后端（sqlite、markdown、none）- 快速模式下使用，默认：sqlite
         #[arg(long)]
         memory: Option<String>,
     },
 
-    /// Start the AI agent loop
+    /// 启动 AI agent 循环
     Agent {
-        /// Single message mode (don't enter interactive mode)
+        /// 单消息模式（不进入交互模式）
         #[arg(short, long, conflicts_with = "tui")]
         message: Option<String>,
 
-        /// Provider to use (openrouter, anthropic, openai)
+        /// 使用的 Provider（openrouter、anthropic、openai）
         #[arg(short, long)]
         provider: Option<String>,
 
-        /// Model to use
+        /// 使用的模型
         #[arg(long)]
         model: Option<String>,
 
-        /// Temperature (0.0 - 2.0)
+        /// 温度参数（0.0 - 2.0）
         #[arg(short, long, default_value = "0.7")]
         temperature: f64,
 
-        /// Launch the terminal user interface
+        /// 启动终端用户界面
         #[arg(long)]
         tui: bool,
     },
 
-    /// Launch the terminal user interface (shortcut for `agent --tui`)
+    /// 启动终端用户界面（`agent --tui` 的快捷方式）
     Tui {
-        /// Provider to use (openrouter, anthropic, openai)
+        /// 使用的 Provider（openrouter、anthropic、openai）
         #[arg(short, long)]
         provider: Option<String>,
 
-        /// Model to use
+        /// 使用的模型
         #[arg(long)]
         model: Option<String>,
 
-        /// Temperature (0.0 - 2.0)
+        /// 温度参数（0.0 - 2.0）
         #[arg(short, long, default_value = "0.7")]
         temperature: f64,
     },
 
-    /// Start the gateway server (webhooks, websockets)
+    /// 启动 Gateway 服务器（webhooks、websockets）
     Gateway {
-        /// Port to listen on (use 0 for random available port)
-        #[arg(short, long, default_value = "8080")]
+        /// 监听端口（使用 0 表示随机可用端口）
+        #[arg(short, long, default_value = "8299")]
         port: u16,
 
-        /// Host to bind to
+        /// 绑定主机地址
         #[arg(long, default_value = "127.0.0.1")]
         host: String,
     },
 
-    /// Start long-running autonomous runtime (gateway + channels + heartbeat + scheduler)
+    /// 启动长期运行的自主运行时（gateway + 通道 + 心跳 + 调度器）
     Daemon {
-        /// Port to listen on (use 0 for random available port)
-        #[arg(short, long, default_value = "8080")]
+        /// 监听端口（使用 0 表示随机可用端口）
+        #[arg(short, long, default_value = "8299")]
         port: u16,
 
-        /// Host to bind to
+        /// 绑定主机地址
         #[arg(long, default_value = "127.0.0.1")]
         host: String,
+
+        /// 前台运行（不后台化，供 service/调试用）
+        #[arg(long)]
+        foreground: bool,
+
+        /// 停止正在运行的守护进程
+        #[arg(long)]
+        stop: bool,
     },
 
-    /// Manage OS service lifecycle (launchd/systemd user service)
+    /// 管理操作系统服务生命周期（launchd/systemd 用户服务）
     Service {
         #[command(subcommand)]
         service_command: ServiceCommands,
     },
 
-    /// Run diagnostics for daemon/scheduler/channel freshness
+    /// 运行诊断检查（守护进程/调度器/通道健康状态）
     Doctor,
 
-    /// Show system status (full details)
+    /// 显示系统状态（完整详情）
     Status,
 
-    /// Configure and manage scheduled tasks
+    /// 配置和管理定时任务
     Cron {
         #[command(subcommand)]
         cron_command: CronCommands,
     },
 
-    /// Manage channels (telegram, discord, slack)
+    /// 管理通道（telegram、discord、slack）
     Channel {
         #[command(subcommand)]
         channel_command: ChannelCommands,
     },
 
-    /// Browse 50+ integrations
+    /// 浏览 50+ 集成
     Integrations {
         #[command(subcommand)]
         integration_command: IntegrationCommands,
     },
 
-    /// Manage skills (user-defined capabilities)
+    /// 管理技能（用户自定义能力）
     Skills {
         #[command(subcommand)]
         skill_command: SkillCommands,
     },
 
-    /// Migrate data from other agent runtimes
+    /// 从其他 Agent 运行时迁移数据
     Migrate {
         #[command(subcommand)]
         migrate_command: MigrateCommands,
@@ -195,13 +204,13 @@ enum Commands {
 
 #[derive(Subcommand, Debug)]
 enum MigrateCommands {
-    /// Import memory from an `OpenClaw` workspace into this `Jarvis` workspace
+    /// 从 `OpenClaw` 工作区导入记忆到当前 `Jarvis` 工作区
     Openclaw {
-        /// Optional path to `OpenClaw` workspace (defaults to ~/.openclaw/workspace)
+        /// `OpenClaw` 工作区路径（可选，默认 ~/.openclaw/workspace）
         #[arg(long)]
         source: Option<std::path::PathBuf>,
 
-        /// Validate and preview migration without writing any data
+        /// 仅验证和预览迁移，不写入任何数据
         #[arg(long)]
         dry_run: bool,
     },
@@ -209,67 +218,76 @@ enum MigrateCommands {
 
 #[derive(Subcommand, Debug)]
 enum CronCommands {
-    /// List all scheduled tasks
+    /// 列出所有定时任务
     List,
-    /// Add a new scheduled task
+    /// 添加新的定时任务
     Add {
-        /// Cron expression
+        /// Cron 表达式
         expression: String,
-        /// Command to run
+        /// 要执行的命令
         command: String,
     },
-    /// Remove a scheduled task
+    /// 移除定时任务
     Remove {
-        /// Task ID
+        /// 任务 ID
         id: String,
     },
 }
 
 #[derive(Subcommand, Debug)]
 enum ChannelCommands {
-    /// List configured channels
+    /// 列出已配置的通道
     List,
-    /// Start all configured channels (Telegram, Discord, Slack)
+    /// 启动所有已配置的通道（Telegram、Discord、Slack）
     Start,
-    /// Run health checks for configured channels
+    /// 运行已配置通道的健康检查
     Doctor,
-    /// Add a new channel
+    /// 添加新通道
     Add {
-        /// Channel type
+        /// 通道类型
         channel_type: String,
-        /// Configuration JSON
+        /// 配置 JSON
         config: String,
     },
-    /// Remove a channel
+    /// 移除通道
     Remove {
-        /// Channel name
+        /// 通道名称
         name: String,
     },
 }
 
 #[derive(Subcommand, Debug)]
 enum SkillCommands {
-    /// List installed skills
+    /// 列出已安装的技能
     List,
-    /// Install a skill from a GitHub URL or local path
+    /// 从 GitHub URL 或本地路径安装技能
     Install {
-        /// GitHub URL or local path
+        /// GitHub URL 或本地路径
         source: String,
     },
-    /// Remove an installed skill
+    /// 移除已安装的技能
     Remove {
-        /// Skill name
+        /// 技能名称
         name: String,
     },
 }
 
 #[derive(Subcommand, Debug)]
 enum IntegrationCommands {
-    /// Show details about a specific integration
+    /// 显示指定集成的详细信息
     Info {
-        /// Integration name
+        /// 集成名称
         name: String,
     },
+}
+
+struct CompactTimer;
+
+impl FormatTime for CompactTimer {
+    fn format_time(&self, w: &mut tracing_subscriber::fmt::format::Writer<'_>) -> std::fmt::Result {
+        let now = chrono::Local::now();
+        write!(w, "{}", now.format("%Y%m%d %H:%M:%S"))
+    }
 }
 
 #[tokio::main]
@@ -279,6 +297,7 @@ async fn main() -> Result<()> {
 
     // Initialize logging
     let subscriber = FmtSubscriber::builder()
+        .with_timer(CompactTimer)
         .with_max_level(Level::INFO)
         .finish();
 
@@ -294,10 +313,10 @@ async fn main() -> Result<()> {
     } = &cli.command
     {
         if *interactive && *channels_only {
-            bail!("Use either --interactive or --channels-only, not both");
+            bail!("请使用 --interactive 或 --channels-only 其中之一，不能同时使用");
         }
         if *channels_only && (api_key.is_some() || provider.is_some() || memory.is_some()) {
-            bail!("--channels-only does not accept --api-key, --provider, or --memory");
+            bail!("--channels-only 不接受 --api-key、--provider 或 --memory 参数");
         }
 
         let config = if *channels_only {
@@ -342,72 +361,187 @@ async fn main() -> Result<()> {
 
         Commands::Gateway { port, host } => {
             if port == 0 {
-                info!("🚀 Starting Jarvis Gateway on {host} (random port)");
+                info!("🚀 正在启动 Jarvis Gateway，地址 {host}（随机端口）");
             } else {
-                info!("🚀 Starting Jarvis Gateway on {host}:{port}");
+                info!("🚀 正在启动 Jarvis Gateway，地址 {host}:{port}");
             }
             gateway::run_gateway(&host, port, config).await
         }
 
-        Commands::Daemon { port, host } => {
-            if port == 0 {
-                info!("🧠 Starting Jarvis Daemon on {host} (random port)");
-            } else {
-                info!("🧠 Starting Jarvis Daemon on {host}:{port}");
+        Commands::Daemon {
+            port,
+            host,
+            foreground,
+            stop,
+        } => {
+            if stop {
+                return daemon::stop_daemon(&config);
             }
-            daemon::run(config, host, port).await
+
+            if foreground {
+                if port == 0 {
+                    info!("🧠 正在启动 Jarvis 守护进程，地址 {host}（随机端口）");
+                } else {
+                    info!("🧠 正在启动 Jarvis 守护进程，地址 {host}:{port}");
+                }
+                daemon::run(config, host, port).await
+            } else {
+                // 后台启动模式
+                if let Some(pid) = daemon::is_daemon_running(&config) {
+                    println!("守护进程已在运行（PID {pid}）");
+                    return Ok(());
+                }
+
+                // 创建日志目录
+                let logs_dir = config
+                    .config_path
+                    .parent()
+                    .map_or_else(|| std::path::PathBuf::from("."), std::path::PathBuf::from)
+                    .join("logs");
+                std::fs::create_dir_all(&logs_dir)?;
+
+                let stdout_log = logs_dir.join("daemon.stdout.log");
+                let stderr_log = logs_dir.join("daemon.stderr.log");
+
+                let exe = std::env::current_exe().context("无法获取当前可执行文件路径")?;
+
+                let stdout_file = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&stdout_log)
+                    .context("打开 stdout 日志文件失败")?;
+                let stderr_file = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&stderr_log)
+                    .context("打开 stderr 日志文件失败")?;
+
+                let mut cmd = std::process::Command::new(exe);
+                cmd.args(["daemon", "--foreground"])
+                    .args(["--port", &port.to_string()])
+                    .args(["--host", &host])
+                    .stdout(stdout_file)
+                    .stderr(stderr_file);
+
+                // Unix: 使进程脱离当前会话
+                #[cfg(unix)]
+                {
+                    use std::os::unix::process::CommandExt;
+                    cmd.process_group(0);
+                }
+
+                let child = cmd.spawn().context("启动守护进程失败")?;
+                let child_pid = child.id();
+
+                // 等待短暂时间确认进程启动成功
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                if daemon::is_daemon_running(&config).is_some() {
+                    println!("🧠 Jarvis 守护进程已在后台启动（PID {child_pid}）");
+                    println!("   Gateway：http://{host}:{port}");
+                    println!("   日志：{}", logs_dir.display());
+                    println!("   停止：jarvis daemon --stop");
+                } else {
+                    println!("⚠️  守护进程可能启动失败，请查看日志：");
+                    println!("   {}", stderr_log.display());
+                }
+                Ok(())
+            }
         }
 
         Commands::Status => {
-            println!("🤖 Jarvis Status");
+            println!("🤖 Jarvis 状态");
             println!();
-            println!("Version:     {}", env!("CARGO_PKG_VERSION"));
-            println!("Workspace:   {}", config.workspace_dir.display());
-            println!("Config:      {}", config.config_path.display());
+            println!("版本：       {}", env!("CARGO_PKG_VERSION"));
+            println!("工作区：     {}", config.workspace_dir.display());
+            println!("配置文件：   {}", config.config_path.display());
             println!();
             println!(
-                "🤖 Provider:      {}",
+                "🤖 Provider：     {}",
                 config.default_provider.as_deref().unwrap_or("openrouter")
             );
             println!(
-                "   Model:         {}",
-                config.default_model.as_deref().unwrap_or("(default)")
+                "   模型：         {}",
+                config.default_model.as_deref().unwrap_or("（默认）")
             );
-            println!("📊 Observability:  {}", config.observability.backend);
-            println!("🛡️  Autonomy:      {:?}", config.autonomy.level);
-            println!("⚙️  Runtime:       {}", config.runtime.kind);
+            println!("📊 可观测性：     {}", config.observability.backend);
+            println!("🛡️  自主等级：     {:?}", config.autonomy.level);
+            println!("⚙️  运行时：       {}", config.runtime.kind);
             println!(
-                "💓 Heartbeat:      {}",
+                "💓 心跳：         {}",
                 if config.heartbeat.enabled {
-                    format!("every {}min", config.heartbeat.interval_minutes)
+                    format!("每 {} 分钟", config.heartbeat.interval_minutes)
                 } else {
-                    "disabled".into()
+                    "已禁用".into()
                 }
             );
             println!(
-                "🧠 Memory:         {} (auto-save: {})",
+                "🧠 记忆：         {}（自动保存：{}）",
                 config.memory.backend,
-                if config.memory.auto_save { "on" } else { "off" }
+                if config.memory.auto_save {
+                    "开"
+                } else {
+                    "关"
+                }
             );
 
             println!();
-            println!("Security:");
-            println!("  Workspace only:    {}", config.autonomy.workspace_only);
+            println!("安全设置：");
+            println!("  仅限工作区：     {}", config.autonomy.workspace_only);
             println!(
-                "  Allowed commands:  {}",
+                "  允许的命令：     {}",
                 config.autonomy.allowed_commands.join(", ")
             );
             println!(
-                "  Max actions/hour:  {}",
+                "  每小时最大操作数：{}",
                 config.autonomy.max_actions_per_hour
             );
             println!(
-                "  Max cost/day:      ${:.2}",
+                "  每日最大费用：   ${:.2}",
                 f64::from(config.autonomy.max_cost_per_day_cents) / 100.0
             );
+            // 守护进程运行时状态
             println!();
-            println!("Channels:");
-            println!("  CLI:      ✅ always");
+            if let Some(pid) = daemon::is_daemon_running(&config) {
+                println!("守护进程：    ✅ 运行中（PID {pid}）");
+                let state_path = daemon::state_file_path(&config);
+                if let Ok(data) = std::fs::read_to_string(&state_path) {
+                    if let Ok(state) = serde_json::from_str::<serde_json::Value>(&data) {
+                        if let Some(uptime) = state
+                            .get("uptime_seconds")
+                            .and_then(serde_json::Value::as_u64)
+                        {
+                            let hours = uptime / 3600;
+                            let mins = (uptime % 3600) / 60;
+                            if hours > 0 {
+                                println!("  运行时间：  {hours}小时{mins}分钟");
+                            } else {
+                                println!("  运行时间：  {mins}分钟");
+                            }
+                        }
+                        if let Some(components) = state
+                            .get("components")
+                            .and_then(serde_json::Value::as_object)
+                        {
+                            println!("  组件：");
+                            for (name, info) in components {
+                                let status = info
+                                    .get("status")
+                                    .and_then(serde_json::Value::as_str)
+                                    .unwrap_or("未知");
+                                let icon = if status == "ok" { "✅" } else { "❌" };
+                                println!("    {name:12} {icon} {status}");
+                            }
+                        }
+                    }
+                }
+            } else {
+                println!("守护进程：    ❌ 未运行");
+                println!("  提示：使用 jarvis daemon 启动");
+            }
+
+            println!();
+            println!("通道：");
+            println!("  CLI：     ✅ 始终启用");
             for (name, configured) in [
                 ("Telegram", config.channels_config.telegram.is_some()),
                 ("Discord", config.channels_config.discord.is_some()),
@@ -417,9 +551,9 @@ async fn main() -> Result<()> {
                 println!(
                     "  {name:9} {}",
                     if configured {
-                        "✅ configured"
+                        "✅ 已配置"
                     } else {
-                        "❌ not configured"
+                        "❌ 未配置"
                     }
                 );
             }

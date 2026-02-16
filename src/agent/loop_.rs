@@ -51,21 +51,20 @@ pub async fn execute_tool_calls(
         // Find the tool in the registry
         let tool = tools.iter().find(|t| t.name() == tool_name);
         let Some(tool) = tool else {
-            tracing::warn!(tool = tool_name, "Unknown tool requested by model");
+            tracing::warn!(tool = tool_name, "模型请求了未知工具");
             results.push(ChatMessage::Tool {
                 tool_call_id: tc.id.clone(),
-                content: format!("Error: Unknown tool '{tool_name}'"),
+                content: format!("Error: 未知工具「{tool_name}」"),
             });
             continue;
         };
 
         // Rate limit check
         if !security.record_action() {
-            tracing::warn!(tool = tool_name, "Rate limit exceeded for tool call");
+            tracing::warn!(tool = tool_name, "工具调用超出速率限制");
             results.push(ChatMessage::Tool {
                 tool_call_id: tc.id.clone(),
-                content: "Error: Rate limit exceeded. Please wait before making more tool calls."
-                    .to_string(),
+                content: "错误: 超出速率限制，请稍后再进行工具调用。".to_string(),
             });
             continue;
         }
@@ -77,11 +76,11 @@ pub async fn execute_tool_calls(
                 tracing::warn!(
                     tool = tool_name,
                     error = %e,
-                    "Failed to parse tool arguments"
+                    "工具参数解析失败"
                 );
                 results.push(ChatMessage::Tool {
                     tool_call_id: tc.id.clone(),
-                    content: format!("Error: Failed to parse arguments: {e}"),
+                    content: format!("错误: 参数解析失败: {e}"),
                 });
                 continue;
             }
@@ -89,7 +88,7 @@ pub async fn execute_tool_calls(
 
         // Execute the tool
         if !quiet {
-            tracing::info!(tool = tool_name, "Executing tool");
+            tracing::info!(tool = tool_name, "正在执行工具");
         }
         let tool_result = match tool.execute(args).await {
             Ok(result) => {
@@ -100,7 +99,7 @@ pub async fn execute_tool_calls(
                 }
             }
             Err(e) => {
-                tracing::error!(tool = tool_name, error = %e, "Tool execution failed");
+                tracing::error!(tool = tool_name, error = %e, "工具执行失败");
                 format!("Error: {e}")
             }
         };
@@ -119,7 +118,7 @@ pub async fn execute_tool_calls(
                 tool = tool_name,
                 success,
                 duration_ms = duration.as_millis(),
-                "Tool execution completed"
+                "工具执行完成"
             );
         }
 
@@ -210,11 +209,7 @@ pub async fn run_tool_loop(
                 text: assistant_text,
             } => {
                 if !quiet {
-                    tracing::info!(
-                        iteration,
-                        num_calls = tool_calls.len(),
-                        "Model requested tool calls"
-                    );
+                    tracing::info!(iteration, num_calls = tool_calls.len(), "模型请求工具调用");
 
                     if let Some(ref text) = assistant_text {
                         if !text.trim().is_empty() {
@@ -258,12 +253,10 @@ pub async fn run_tool_loop(
     }
 
     // Max iterations reached — ask for a final text response without tools
-    tracing::warn!(
-        max_iterations,
-        "Tool loop reached max iterations, requesting final response"
-    );
+    tracing::warn!(max_iterations, "工具循环已达最大迭代次数，正在请求最终响应");
     history.push(ChatMessage::User {
-        content: "You have reached the maximum number of tool call iterations. Please provide your final answer now based on the information gathered so far.".to_string(),
+        content: "你已达到工具调用的最大迭代次数。请根据目前收集的信息，立即给出最终回答。"
+            .to_string(),
     });
 
     let final_response = provider
@@ -279,9 +272,8 @@ pub async fn run_tool_loop(
             Ok(text)
         }
         ChatResponse::ToolUse { text, .. } => {
-            let final_text = text.unwrap_or_else(|| {
-                "I was unable to provide a final answer within the iteration limit.".to_string()
-            });
+            let final_text =
+                text.unwrap_or_else(|| "在迭代次数限制内未能给出最终回答。".to_string());
             history.push(ChatMessage::Assistant {
                 content: Some(final_text.clone()),
                 tool_calls: None,
@@ -314,7 +306,7 @@ pub async fn run(
         &config.workspace_dir,
         config.api_key.as_deref(),
     )?);
-    tracing::info!(backend = mem.name(), "Memory initialized");
+    tracing::info!(backend = mem.name(), "记忆系统已初始化");
 
     // ── Tools (including memory tools) ────────────────────────────
     let composio_key = if config.composio.enabled {
@@ -458,8 +450,8 @@ pub async fn run(
                 .await;
         }
     } else {
-        println!("🤖 Jarvis Interactive Mode");
-        println!("Type /quit to exit.\n");
+        println!("🤖 Jarvis 交互模式");
+        println!("输入 /quit 退出。\n");
 
         let (tx, mut rx) = tokio::sync::mpsc::channel(32);
         let cli = crate::channels::CliChannel::new();
@@ -1030,7 +1022,7 @@ mod tests {
         // Second should be rate limited
         if let ChatMessage::Tool { content, .. } = &results[1] {
             assert!(
-                content.contains("Rate limit"),
+                content.contains("速率限制"),
                 "Expected rate limit error, got: {content}"
             );
         } else {
@@ -1060,7 +1052,7 @@ mod tests {
         assert_eq!(results.len(), 1);
         if let ChatMessage::Tool { content, .. } = &results[0] {
             assert!(
-                content.contains("Failed to parse arguments"),
+                content.contains("参数解析失败"),
                 "Expected parse error, got: {content}"
             );
         } else {

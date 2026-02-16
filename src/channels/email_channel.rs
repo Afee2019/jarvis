@@ -169,12 +169,12 @@ impl EmailChannel {
                 if ct.ctype() == "text" {
                     if let Ok(text) = std::str::from_utf8(part.contents()) {
                         let name = MimeHeaders::attachment_name(part).unwrap_or("file");
-                        return format!("[Attachment: {}]\n{}", name, text);
+                        return format!("[附件: {}]\n{}", name, text);
                     }
                 }
             }
         }
-        "(no readable content)".to_string()
+        "（无可读内容）".to_string()
     }
 
     /// Fetch unseen emails via IMAP (blocking, run in spawn_blocking)
@@ -206,7 +206,7 @@ impl EmailChannel {
                 loop {
                     let mut byte = [0u8; 1];
                     match std::io::Read::read(tls, &mut byte) {
-                        Ok(0) => return Err(anyhow!("IMAP connection closed")),
+                        Ok(0) => return Err(anyhow!("IMAP 连接已关闭")),
                         Ok(_) => {
                             buf.push(byte[0]);
                             if buf.ends_with(b"\r\n") {
@@ -247,7 +247,7 @@ impl EmailChannel {
             &format!("LOGIN \"{}\" \"{}\"", config.username, config.password),
         )?;
         if !login_resp.last().map_or(false, |l| l.contains("OK")) {
-            return Err(anyhow!("IMAP login failed"));
+            return Err(anyhow!("IMAP 登录失败"));
         }
 
         // Select folder
@@ -287,7 +287,7 @@ impl EmailChannel {
 
             if let Some(parsed) = MessageParser::default().parse(raw.as_bytes()) {
                 let sender = Self::extract_sender(&parsed);
-                let subject = parsed.subject().unwrap_or("(no subject)").to_string();
+                let subject = parsed.subject().unwrap_or("（无主题）").to_string();
                 let body = Self::extract_text(&parsed);
                 let content = format!("Subject: {}\n\n{}", subject, body);
                 let msg_id = parsed
@@ -381,13 +381,13 @@ impl Channel for EmailChannel {
 
         let transport = self.create_smtp_transport()?;
         transport.send(&email)?;
-        info!("Email sent to {}", recipient);
+        info!("邮件已发送至 {}", recipient);
         Ok(())
     }
 
     async fn listen(&self, tx: mpsc::Sender<ChannelMessage>) -> Result<()> {
         info!(
-            "Email polling every {}s on {}",
+            "邮件每 {}秒 轮询一次，监听 {}",
             self.config.poll_interval_secs, self.config.imap_folder
         );
         let mut tick = interval(Duration::from_secs(self.config.poll_interval_secs));
@@ -405,7 +405,7 @@ impl Channel for EmailChannel {
                                 continue;
                             }
                             if !self.is_sender_allowed(&sender) {
-                                warn!("Blocked email from {}", sender);
+                                warn!("已拦截来自 {} 的邮件", sender);
                                 continue;
                             }
                             seen.insert(id.clone());
@@ -423,11 +423,11 @@ impl Channel for EmailChannel {
                     }
                 }
                 Ok(Err(e)) => {
-                    error!("Email poll failed: {}", e);
+                    error!("邮件轮询失败: {}", e);
                     sleep(Duration::from_secs(10)).await;
                 }
                 Err(e) => {
-                    error!("Email poll task panicked: {}", e);
+                    error!("邮件轮询任务崩溃: {}", e);
                     sleep(Duration::from_secs(10)).await;
                 }
             }

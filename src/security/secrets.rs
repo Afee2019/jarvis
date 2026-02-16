@@ -65,7 +65,7 @@ impl SecretStore {
         let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
         let ciphertext = cipher
             .encrypt(&nonce, plaintext.as_bytes())
-            .map_err(|e| anyhow::anyhow!("Encryption failed: {e}"))?;
+            .map_err(|e| anyhow::anyhow!("加密失败: {e}"))?;
 
         // Prepend nonce to ciphertext for storage
         let mut blob = Vec::with_capacity(NONCE_LEN + ciphertext.len());
@@ -106,9 +106,9 @@ impl SecretStore {
         } else if let Some(hex_str) = value.strip_prefix("enc:") {
             // Legacy XOR cipher — decrypt and re-encrypt with ChaCha20-Poly1305
             tracing::warn!(
-                "Decrypting legacy XOR-encrypted secret (enc: prefix). \
-                 This format is insecure and will be removed in a future release. \
-                 The secret will be automatically migrated to enc2: (ChaCha20-Poly1305)."
+                "正在解密旧版 XOR 加密密钥（enc: 前缀）。\
+                 此格式不安全，将在未来版本中移除。\
+                 密钥将自动迁移至 enc2:（ChaCha20-Poly1305）格式。"
             );
             let plaintext = self.decrypt_legacy_xor(hex_str)?;
             let migrated = self.encrypt(&plaintext)?;
@@ -126,12 +126,8 @@ impl SecretStore {
 
     /// Decrypt using ChaCha20-Poly1305 (current secure format).
     fn decrypt_chacha20(&self, hex_str: &str) -> Result<String> {
-        let blob =
-            hex_decode(hex_str).context("Failed to decode encrypted secret (corrupt hex)")?;
-        anyhow::ensure!(
-            blob.len() > NONCE_LEN,
-            "Encrypted value too short (missing nonce)"
-        );
+        let blob = hex_decode(hex_str).context("解密密钥解码失败（十六进制数据损坏）")?;
+        anyhow::ensure!(blob.len() > NONCE_LEN, "加密值过短（缺少 nonce）");
 
         let (nonce_bytes, ciphertext) = blob.split_at(NONCE_LEN);
         let nonce = Nonce::from_slice(nonce_bytes);
@@ -141,20 +137,18 @@ impl SecretStore {
 
         let plaintext_bytes = cipher
             .decrypt(nonce, ciphertext)
-            .map_err(|_| anyhow::anyhow!("Decryption failed — wrong key or tampered data"))?;
+            .map_err(|_| anyhow::anyhow!("解密失败 - 密钥错误或数据被篡改"))?;
 
-        String::from_utf8(plaintext_bytes)
-            .context("Decrypted secret is not valid UTF-8 — corrupt data")
+        String::from_utf8(plaintext_bytes).context("解密后的密钥不是有效的 UTF-8 - 数据损坏")
     }
 
     /// Decrypt using legacy XOR cipher (insecure, for backward compatibility only).
     fn decrypt_legacy_xor(&self, hex_str: &str) -> Result<String> {
-        let ciphertext = hex_decode(hex_str)
-            .context("Failed to decode legacy encrypted secret (corrupt hex)")?;
+        let ciphertext = hex_decode(hex_str).context("旧版加密密钥解码失败（十六进制数据损坏）")?;
         let key = self.load_or_create_key()?;
         let plaintext_bytes = xor_cipher(&ciphertext, &key);
         String::from_utf8(plaintext_bytes)
-            .context("Decrypted legacy secret is not valid UTF-8 — wrong key or corrupt data")
+            .context("旧版解密后的密钥不是有效的 UTF-8 - 密钥错误或数据损坏")
     }
 
     /// Check if a value is already encrypted (current or legacy format).
@@ -170,23 +164,21 @@ impl SecretStore {
     /// Load the encryption key from disk, or create one if it doesn't exist.
     fn load_or_create_key(&self) -> Result<Vec<u8>> {
         if self.key_path.exists() {
-            let hex_key =
-                fs::read_to_string(&self.key_path).context("Failed to read secret key file")?;
-            hex_decode(hex_key.trim()).context("Secret key file is corrupt")
+            let hex_key = fs::read_to_string(&self.key_path).context("读取密钥文件失败")?;
+            hex_decode(hex_key.trim()).context("密钥文件已损坏")
         } else {
             let key = generate_random_key();
             if let Some(parent) = self.key_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            fs::write(&self.key_path, hex_encode(&key))
-                .context("Failed to write secret key file")?;
+            fs::write(&self.key_path, hex_encode(&key)).context("写入密钥文件失败")?;
 
             // Set restrictive permissions
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
                 fs::set_permissions(&self.key_path, fs::Permissions::from_mode(0o600))
-                    .context("Failed to set key file permissions")?;
+                    .context("设置密钥文件权限失败")?;
             }
             #[cfg(windows)]
             {
@@ -194,8 +186,8 @@ impl SecretStore {
                 let username = std::env::var("USERNAME").unwrap_or_default();
                 let Some(grant_arg) = build_windows_icacls_grant_arg(&username) else {
                     tracing::warn!(
-                        "USERNAME environment variable is empty; \
-                         cannot restrict key file permissions via icacls"
+                        "USERNAME 环境变量为空；\
+                         无法通过 icacls 限制密钥文件权限"
                     );
                     return Ok(key);
                 };
@@ -208,15 +200,15 @@ impl SecretStore {
                 {
                     Ok(o) if !o.status.success() => {
                         tracing::warn!(
-                            "Failed to set key file permissions via icacls (exit code {:?})",
+                            "通过 icacls 设置密钥文件权限失败（退出码 {:?}）",
                             o.status.code()
                         );
                     }
                     Err(e) => {
-                        tracing::warn!("Could not set key file permissions: {e}");
+                        tracing::warn!("无法设置密钥文件权限: {e}");
                     }
                     _ => {
-                        tracing::debug!("Key file permissions restricted via icacls");
+                        tracing::debug!("已通过 icacls 限制密钥文件权限");
                     }
                 }
             }
@@ -269,13 +261,13 @@ fn build_windows_icacls_grant_arg(username: &str) -> Option<String> {
 #[allow(unknown_lints, clippy::manual_is_multiple_of)]
 fn hex_decode(hex: &str) -> Result<Vec<u8>> {
     if (hex.len() & 1) != 0 {
-        anyhow::bail!("Hex string has odd length");
+        anyhow::bail!("十六进制字符串长度为奇数");
     }
     (0..hex.len())
         .step_by(2)
         .map(|i| {
             u8::from_str_radix(&hex[i..i + 2], 16)
-                .map_err(|e| anyhow::anyhow!("Invalid hex at position {i}: {e}"))
+                .map_err(|e| anyhow::anyhow!("位置 {i} 处的十六进制无效: {e}"))
         })
         .collect()
 }

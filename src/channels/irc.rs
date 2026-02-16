@@ -347,7 +347,7 @@ impl Channel for IrcChannel {
         let mut guard = self.writer.lock().await;
         let writer = guard
             .as_mut()
-            .ok_or_else(|| anyhow::anyhow!("IRC not connected"))?;
+            .ok_or_else(|| anyhow::anyhow!("IRC 未连接"))?;
 
         // Calculate safe payload size:
         // 512 - sender prefix (~64 bytes for :nick!user@host) - "PRIVMSG " - target - " :" - "\r\n"
@@ -365,7 +365,7 @@ impl Channel for IrcChannel {
     async fn listen(&self, tx: mpsc::Sender<ChannelMessage>) -> anyhow::Result<()> {
         let mut current_nick = self.nickname.clone();
         tracing::info!(
-            "IRC channel connecting to {}:{} as {}...",
+            "IRC 通道正在连接 {}:{}，昵称 {}...",
             self.server,
             self.port,
             current_nick
@@ -403,11 +403,9 @@ impl Channel for IrcChannel {
             line.clear();
             let n = tokio::time::timeout(READ_TIMEOUT, buf_reader.read_line(&mut line))
                 .await
-                .map_err(|_| {
-                    anyhow::anyhow!("IRC read timed out (no data for {READ_TIMEOUT:?})")
-                })??;
+                .map_err(|_| anyhow::anyhow!("IRC 读取超时（{READ_TIMEOUT:?} 内无数据）"))??;
             if n == 0 {
-                anyhow::bail!("IRC connection closed by server");
+                anyhow::bail!("IRC 连接被服务器关闭");
             }
 
             let Some(msg) = IrcMessage::parse(&line) else {
@@ -434,9 +432,7 @@ impl Channel for IrcChannel {
                             }
                         } else if msg.params.iter().any(|p| p.contains("NAK")) {
                             // CAP * NAK :sasl — server rejected SASL, proceed without it
-                            tracing::warn!(
-                                "IRC server does not support SASL, continuing without it"
-                            );
+                            tracing::warn!("IRC 服务器不支持 SASL，将在无 SASL 的情况下继续");
                             sasl_pending = false;
                             let mut guard = self.writer.lock().await;
                             if let Some(ref mut w) = *guard {
@@ -471,7 +467,7 @@ impl Channel for IrcChannel {
 
                 // SASL failure (904, 905, 906, 907)
                 "904" | "905" | "906" | "907" => {
-                    tracing::warn!("IRC SASL authentication failed ({})", msg.command);
+                    tracing::warn!("IRC SASL 认证失败 ({})", msg.command);
                     sasl_pending = false;
                     let mut guard = self.writer.lock().await;
                     if let Some(ref mut w) = *guard {
@@ -482,7 +478,7 @@ impl Channel for IrcChannel {
                 // RPL_WELCOME — registration complete
                 "001" => {
                     registered = true;
-                    tracing::info!("IRC registered as {}", current_nick);
+                    tracing::info!("IRC 已注册为 {}", current_nick);
 
                     // NickServ authentication
                     if let Some(ref pass) = self.nickserv_password {
@@ -505,7 +501,7 @@ impl Channel for IrcChannel {
                 // ERR_NICKNAMEINUSE (433)
                 "433" => {
                     let alt = format!("{current_nick}_");
-                    tracing::warn!("IRC nickname {current_nick} is in use, trying {alt}");
+                    tracing::warn!("IRC 昵称 {current_nick} 已被占用，尝试 {alt}");
                     let mut guard = self.writer.lock().await;
                     if let Some(ref mut w) = *guard {
                         Self::send_raw(w, &format!("NICK {alt}")).await?;
@@ -566,7 +562,7 @@ impl Channel for IrcChannel {
 
                 // ERR_PASSWDMISMATCH (464) or other fatal errors
                 "464" => {
-                    anyhow::bail!("IRC password mismatch");
+                    anyhow::bail!("IRC 密码不匹配");
                 }
 
                 _ => {}

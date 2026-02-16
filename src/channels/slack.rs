@@ -70,10 +70,10 @@ impl Channel for SlackChannel {
         let body = resp
             .text()
             .await
-            .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+            .unwrap_or_else(|e| format!("<无法读取响应体: {e}>"));
 
         if !status.is_success() {
-            anyhow::bail!("Slack chat.postMessage failed ({status}): {body}");
+            anyhow::bail!("Slack chat.postMessage 失败 ({status}): {body}");
         }
 
         // Slack returns 200 for most app-level errors; check JSON "ok" field
@@ -83,7 +83,7 @@ impl Channel for SlackChannel {
                 .get("error")
                 .and_then(|e| e.as_str())
                 .unwrap_or("unknown");
-            anyhow::bail!("Slack chat.postMessage failed: {err}");
+            anyhow::bail!("Slack chat.postMessage 失败: {err}");
         }
 
         Ok(())
@@ -93,12 +93,12 @@ impl Channel for SlackChannel {
         let channel_id = self
             .channel_id
             .clone()
-            .ok_or_else(|| anyhow::anyhow!("Slack channel_id required for listening"))?;
+            .ok_or_else(|| anyhow::anyhow!("Slack 监听需要 channel_id"))?;
 
         let bot_user_id = self.get_bot_user_id().await.unwrap_or_default();
         let mut last_ts = String::new();
 
-        tracing::info!("Slack channel listening on #{channel_id}...");
+        tracing::info!("Slack 通道正在监听 #{channel_id}...");
 
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(3)).await;
@@ -118,7 +118,7 @@ impl Channel for SlackChannel {
             {
                 Ok(r) => r,
                 Err(e) => {
-                    tracing::warn!("Slack poll error: {e}");
+                    tracing::warn!("Slack 轮询出错: {e}");
                     continue;
                 }
             };
@@ -126,7 +126,7 @@ impl Channel for SlackChannel {
             let data: serde_json::Value = match resp.json().await {
                 Ok(d) => d,
                 Err(e) => {
-                    tracing::warn!("Slack parse error: {e}");
+                    tracing::warn!("Slack 解析出错: {e}");
                     continue;
                 }
             };
@@ -148,7 +148,7 @@ impl Channel for SlackChannel {
 
                     // Sender validation
                     if !self.is_user_allowed(user) {
-                        tracing::warn!("Slack: ignoring message from unauthorized user: {user}");
+                        tracing::warn!("Slack: 忽略未授权用户的消息: {user}");
                         continue;
                     }
 

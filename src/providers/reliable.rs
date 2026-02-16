@@ -51,9 +51,9 @@ impl ReliableProvider {
 impl Provider for ReliableProvider {
     async fn warmup(&self) -> anyhow::Result<()> {
         for (name, provider) in &self.providers {
-            tracing::info!(provider = name, "Warming up provider connection pool");
+            tracing::info!(provider = name, "正在预热 Provider 连接池");
             if let Err(e) = provider.warmup().await {
-                tracing::warn!(provider = name, "Warmup failed (non-fatal): {e}");
+                tracing::warn!(provider = name, "预热失败（非致命）: {e}");
             }
         }
         Ok(())
@@ -81,7 +81,7 @@ impl Provider for ReliableProvider {
                             tracing::info!(
                                 provider = provider_name,
                                 attempt,
-                                "Provider recovered after retries"
+                                "Provider 重试后恢复"
                             );
                         }
                         return Ok(resp);
@@ -97,7 +97,7 @@ impl Provider for ReliableProvider {
                         if non_retryable {
                             tracing::warn!(
                                 provider = provider_name,
-                                "Non-retryable error, switching provider"
+                                "不可重试的错误，正在切换 Provider"
                             );
                             break;
                         }
@@ -107,7 +107,7 @@ impl Provider for ReliableProvider {
                                 provider = provider_name,
                                 attempt = attempt + 1,
                                 max_retries = self.max_retries,
-                                "Provider call failed, retrying"
+                                "Provider 调用失败，正在重试"
                             );
                             tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
                             backoff_ms = (backoff_ms.saturating_mul(2)).min(10_000);
@@ -116,10 +116,10 @@ impl Provider for ReliableProvider {
                 }
             }
 
-            tracing::warn!(provider = provider_name, "Switching to fallback provider");
+            tracing::warn!(provider = provider_name, "正在切换到备用 Provider");
         }
 
-        anyhow::bail!("All providers failed. Attempts:\n{}", failures.join("\n"))
+        anyhow::bail!("所有 Provider 均失败。尝试记录:\n{}", failures.join("\n"))
     }
 
     async fn chat_with_tools(
@@ -144,7 +144,7 @@ impl Provider for ReliableProvider {
                             tracing::info!(
                                 provider = provider_name,
                                 attempt,
-                                "Provider recovered after retries (chat_with_tools)"
+                                "Provider 重试后恢复 (chat_with_tools)"
                             );
                         }
                         return Ok(resp);
@@ -160,7 +160,7 @@ impl Provider for ReliableProvider {
                         if non_retryable {
                             tracing::warn!(
                                 provider = provider_name,
-                                "Non-retryable error, switching provider (chat_with_tools)"
+                                "不可重试的错误，正在切换 Provider (chat_with_tools)"
                             );
                             break;
                         }
@@ -170,7 +170,7 @@ impl Provider for ReliableProvider {
                                 provider = provider_name,
                                 attempt = attempt + 1,
                                 max_retries = self.max_retries,
-                                "Provider call failed, retrying (chat_with_tools)"
+                                "Provider 调用失败，正在重试 (chat_with_tools)"
                             );
                             tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
                             backoff_ms = (backoff_ms.saturating_mul(2)).min(10_000);
@@ -181,12 +181,12 @@ impl Provider for ReliableProvider {
 
             tracing::warn!(
                 provider = provider_name,
-                "Switching to fallback provider (chat_with_tools)"
+                "正在切换到备用 Provider (chat_with_tools)"
             );
         }
 
         anyhow::bail!(
-            "All providers failed (chat_with_tools). Attempts:\n{}",
+            "所有 Provider 均失败 (chat_with_tools)。尝试记录:\n{}",
             failures.join("\n")
         )
     }
@@ -334,7 +334,7 @@ mod tests {
             .await
             .expect_err("all providers should fail");
         let msg = err.to_string();
-        assert!(msg.contains("All providers failed"));
+        assert!(msg.contains("所有 Provider 均失败"));
         assert!(msg.contains("p1 attempt 1/1"));
         assert!(msg.contains("p2 attempt 1/1"));
     }

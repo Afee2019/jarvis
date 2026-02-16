@@ -22,7 +22,7 @@ fn install(config: &Config) -> Result<()> {
     } else if cfg!(target_os = "linux") {
         install_linux(config)
     } else {
-        anyhow::bail!("Service management is supported on macOS and Linux only");
+        anyhow::bail!("服务管理仅支持 macOS 和 Linux");
     }
 }
 
@@ -31,16 +31,16 @@ fn start(config: &Config) -> Result<()> {
         let plist = macos_service_file()?;
         run_checked(Command::new("launchctl").arg("load").arg("-w").arg(&plist))?;
         run_checked(Command::new("launchctl").arg("start").arg(SERVICE_LABEL))?;
-        println!("✅ Service started");
+        println!("✅ 服务已启动");
         Ok(())
     } else if cfg!(target_os = "linux") {
         run_checked(Command::new("systemctl").args(["--user", "daemon-reload"]))?;
         run_checked(Command::new("systemctl").args(["--user", "start", "jarvis.service"]))?;
-        println!("✅ Service started");
+        println!("✅ 服务已启动");
         Ok(())
     } else {
         let _ = config;
-        anyhow::bail!("Service management is supported on macOS and Linux only")
+        anyhow::bail!("服务管理仅支持 macOS 和 Linux")
     }
 }
 
@@ -54,15 +54,15 @@ fn stop(config: &Config) -> Result<()> {
                 .arg("-w")
                 .arg(&plist),
         );
-        println!("✅ Service stopped");
+        println!("✅ 服务已停止");
         Ok(())
     } else if cfg!(target_os = "linux") {
         let _ = run_checked(Command::new("systemctl").args(["--user", "stop", "jarvis.service"]));
-        println!("✅ Service stopped");
+        println!("✅ 服务已停止");
         Ok(())
     } else {
         let _ = config;
-        anyhow::bail!("Service management is supported on macOS and Linux only")
+        anyhow::bail!("服务管理仅支持 macOS 和 Linux")
     }
 }
 
@@ -71,14 +71,14 @@ fn status(config: &Config) -> Result<()> {
         let out = run_capture(Command::new("launchctl").arg("list"))?;
         let running = out.lines().any(|line| line.contains(SERVICE_LABEL));
         println!(
-            "Service: {}",
+            "服务: {}",
             if running {
-                "✅ running/loaded"
+                "✅ 运行中/已加载"
             } else {
-                "❌ not loaded"
+                "❌ 未加载"
             }
         );
-        println!("Unit: {}", macos_service_file()?.display());
+        println!("单元文件: {}", macos_service_file()?.display());
         return Ok(());
     }
 
@@ -86,12 +86,12 @@ fn status(config: &Config) -> Result<()> {
         let out =
             run_capture(Command::new("systemctl").args(["--user", "is-active", "jarvis.service"]))
                 .unwrap_or_else(|_| "unknown".into());
-        println!("Service state: {}", out.trim());
-        println!("Unit: {}", linux_service_file(config)?.display());
+        println!("服务状态: {}", out.trim());
+        println!("单元文件: {}", linux_service_file(config)?.display());
         return Ok(());
     }
 
-    anyhow::bail!("Service management is supported on macOS and Linux only")
+    anyhow::bail!("服务管理仅支持 macOS 和 Linux")
 }
 
 fn uninstall(config: &Config) -> Result<()> {
@@ -100,25 +100,23 @@ fn uninstall(config: &Config) -> Result<()> {
     if cfg!(target_os = "macos") {
         let file = macos_service_file()?;
         if file.exists() {
-            fs::remove_file(&file)
-                .with_context(|| format!("Failed to remove {}", file.display()))?;
+            fs::remove_file(&file).with_context(|| format!("删除失败 {}", file.display()))?;
         }
-        println!("✅ Service uninstalled ({})", file.display());
+        println!("✅ 服务已卸载 ({})", file.display());
         return Ok(());
     }
 
     if cfg!(target_os = "linux") {
         let file = linux_service_file(config)?;
         if file.exists() {
-            fs::remove_file(&file)
-                .with_context(|| format!("Failed to remove {}", file.display()))?;
+            fs::remove_file(&file).with_context(|| format!("删除失败 {}", file.display()))?;
         }
         let _ = run_checked(Command::new("systemctl").args(["--user", "daemon-reload"]));
-        println!("✅ Service uninstalled ({})", file.display());
+        println!("✅ 服务已卸载 ({})", file.display());
         return Ok(());
     }
 
-    anyhow::bail!("Service management is supported on macOS and Linux only")
+    anyhow::bail!("服务管理仅支持 macOS 和 Linux")
 }
 
 fn install_macos(config: &Config) -> Result<()> {
@@ -127,7 +125,7 @@ fn install_macos(config: &Config) -> Result<()> {
         fs::create_dir_all(parent)?;
     }
 
-    let exe = std::env::current_exe().context("Failed to resolve current executable")?;
+    let exe = std::env::current_exe().context("解析当前可执行文件路径失败")?;
     let logs_dir = config
         .config_path
         .parent()
@@ -149,6 +147,7 @@ fn install_macos(config: &Config) -> Result<()> {
   <array>
     <string>{exe}</string>
     <string>daemon</string>
+    <string>--foreground</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -168,8 +167,8 @@ fn install_macos(config: &Config) -> Result<()> {
     );
 
     fs::write(&file, plist)?;
-    println!("✅ Installed launchd service: {}", file.display());
-    println!("   Start with: jarvis service start");
+    println!("✅ 已安装 launchd 服务: {}", file.display());
+    println!("   启动命令: jarvis service start");
     Ok(())
 }
 
@@ -179,24 +178,24 @@ fn install_linux(config: &Config) -> Result<()> {
         fs::create_dir_all(parent)?;
     }
 
-    let exe = std::env::current_exe().context("Failed to resolve current executable")?;
+    let exe = std::env::current_exe().context("解析当前可执行文件路径失败")?;
     let unit = format!(
-        "[Unit]\nDescription=Jarvis daemon\nAfter=network.target\n\n[Service]\nType=simple\nExecStart={} daemon\nRestart=always\nRestartSec=3\n\n[Install]\nWantedBy=default.target\n",
+        "[Unit]\nDescription=Jarvis daemon\nAfter=network.target\n\n[Service]\nType=simple\nExecStart={} daemon --foreground\nRestart=always\nRestartSec=3\n\n[Install]\nWantedBy=default.target\n",
         exe.display()
     );
 
     fs::write(&file, unit)?;
     let _ = run_checked(Command::new("systemctl").args(["--user", "daemon-reload"]));
     let _ = run_checked(Command::new("systemctl").args(["--user", "enable", "jarvis.service"]));
-    println!("✅ Installed systemd user service: {}", file.display());
-    println!("   Start with: jarvis service start");
+    println!("✅ 已安装 systemd 用户服务: {}", file.display());
+    println!("   启动命令: jarvis service start");
     Ok(())
 }
 
 fn macos_service_file() -> Result<PathBuf> {
     let home = directories::UserDirs::new()
         .map(|u| u.home_dir().to_path_buf())
-        .context("Could not find home directory")?;
+        .context("无法找到用户主目录")?;
     Ok(home
         .join("Library")
         .join("LaunchAgents")
@@ -206,7 +205,7 @@ fn macos_service_file() -> Result<PathBuf> {
 fn linux_service_file(config: &Config) -> Result<PathBuf> {
     let home = directories::UserDirs::new()
         .map(|u| u.home_dir().to_path_buf())
-        .context("Could not find home directory")?;
+        .context("无法找到用户主目录")?;
     let _ = config;
     Ok(home
         .join(".config")
@@ -216,16 +215,16 @@ fn linux_service_file(config: &Config) -> Result<PathBuf> {
 }
 
 fn run_checked(command: &mut Command) -> Result<()> {
-    let output = command.output().context("Failed to spawn command")?;
+    let output = command.output().context("启动命令失败")?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Command failed: {}", stderr.trim());
+        anyhow::bail!("命令执行失败: {}", stderr.trim());
     }
     Ok(())
 }
 
 fn run_capture(command: &mut Command) -> Result<String> {
-    let output = command.output().context("Failed to spawn command")?;
+    let output = command.output().context("启动命令失败")?;
     let mut text = String::from_utf8_lossy(&output.stdout).to_string();
     if text.trim().is_empty() {
         text = String::from_utf8_lossy(&output.stderr).to_string();
@@ -269,7 +268,7 @@ mod tests {
     fn run_checked_errors_on_non_zero_status() {
         let err = run_checked(Command::new("sh").args(["-lc", "exit 17"]))
             .expect_err("non-zero exit should error");
-        assert!(err.to_string().contains("Command failed"));
+        assert!(err.to_string().contains("命令执行失败"));
     }
 
     #[test]
