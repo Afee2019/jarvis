@@ -1118,6 +1118,7 @@ fn setup_channels() -> Result<ChannelsConfig> {
         matrix: None,
         whatsapp: None,
         irc: None,
+        dingtalk: None,
     };
 
     loop {
@@ -1176,6 +1177,14 @@ fn setup_channels() -> Result<ChannelsConfig> {
                     "✅ 已配置"
                 } else {
                     "— IRC over TLS"
+                }
+            ),
+            format!(
+                "DingTalk   {}",
+                if config.dingtalk.is_some() {
+                    "✅ 已配置"
+                } else {
+                    "— 钉钉企业应用"
                 }
             ),
             format!(
@@ -1823,6 +1832,89 @@ fn setup_channels() -> Result<ChannelsConfig> {
                 });
             }
             7 => {
+                // ── DingTalk ──
+                println!();
+                println!(
+                    "  {} {}",
+                    style("DingTalk 设置").white().bold(),
+                    style("— 钉钉企业内部应用").dim()
+                );
+                print_bullet("1. 前往 https://open.dingtalk.com/developer 创建应用");
+                print_bullet("2. 获取 AppKey 和 AppSecret");
+                print_bullet("3. 配置消息接收地址（你的服务器 URL）");
+                println!();
+
+                let app_key: String = Input::new()
+                    .with_prompt("  AppKey（应用凭证）")
+                    .interact_text()?;
+
+                if app_key.trim().is_empty() {
+                    println!("  {} 已跳过", style("→").dim());
+                    continue;
+                }
+
+                let app_secret: String = Input::new()
+                    .with_prompt("  AppSecret")
+                    .interact_text()?;
+
+                if app_secret.trim().is_empty() {
+                    println!("  {} 已跳过 — 需要 AppSecret", style("→").dim());
+                    continue;
+                }
+
+                // Test connection - get access token
+                print!("  {} 正在测试连接... ", style("⏳").dim());
+                let client = reqwest::blocking::Client::new();
+                match client
+                    .post("https://api.dingtalk.com/v1.0/oauth2/accessToken")
+                    .json(&serde_json::json!({
+                        "appKey": app_key.trim(),
+                        "appSecret": app_secret.trim()
+                    }))
+                    .send()
+                {
+                    Ok(resp) if resp.status().is_success() => {
+                        println!(
+                            "\r  {} 已连接到钉钉 API        ",
+                            style("✅").green().bold()
+                        );
+                    }
+                    _ => {
+                        println!(
+                            "\r  {} 连接失败 — 请检查 AppKey 和 AppSecret",
+                            style("❌").red().bold()
+                        );
+                        continue;
+                    }
+                }
+
+                let allowed_users_str: String = Input::new()
+                    .with_prompt("  允许的用户 ID（逗号分隔，或 * 表示所有）")
+                    .default("*".into())
+                    .interact_text()?;
+
+                let allowed_users = if allowed_users_str.trim() == "*" {
+                    vec!["*".into()]
+                } else {
+                    allowed_users_str
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect()
+                };
+
+                config.dingtalk = Some(crate::config::schema::DingTalkConfig {
+                    app_key: app_key.trim().to_string(),
+                    app_secret: app_secret.trim().to_string(),
+                    agent_id: 0, // Default, can be configured in钉钉后台
+                    allowed_users,
+                });
+                println!(
+                    "  {} DingTalk 已配置",
+                    style("✅").green().bold()
+                );
+            }
+            8 => {
                 // ── Webhook ──
                 println!();
                 println!(
@@ -1882,6 +1974,9 @@ fn setup_channels() -> Result<ChannelsConfig> {
     }
     if config.irc.is_some() {
         active.push("IRC");
+    }
+    if config.dingtalk.is_some() {
+        active.push("DingTalk");
     }
     if config.webhook.is_some() {
         active.push("Webhook");
