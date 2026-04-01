@@ -547,6 +547,7 @@ async fn main() -> Result<()> {
                 ("Discord", config.channels_config.discord.is_some()),
                 ("Slack", config.channels_config.slack.is_some()),
                 ("Webhook", config.channels_config.webhook.is_some()),
+                ("DingTalk", config.channels_config.dingtalk.is_some()),
             ] {
                 println!(
                     "  {name:9} {}",

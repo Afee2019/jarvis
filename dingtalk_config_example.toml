@@ -1,0 +1,17 @@
+# DingTalk Channel Configuration Example
+# Copy this to ~/.jarvis/config.toml and fill in your values
+
+# ... other config ...
+
+[[channels]]
+type = "dingtalk"
+name = "dingtalk"
+
+[channels.config.dingtalk]
+# 钉钉应用凭证
+app_key = "dinghi5ncwoqrmwqcpfp"
+app_secret = "5enemhlPJUS9l_xmq2K6IpRntiRr_4hwcIqWdUXGJUugjTjJm_syr2myKyP6SUOr"
+# 注意: agent_id 可能需要从钉钉后台获取，此处为示例值
+agent_id = 0
+# 可选：用户白名单（留空或 ["*"] 表示允许所有用户）
+allowed_users = []

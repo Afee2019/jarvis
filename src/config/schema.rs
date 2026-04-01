@@ -591,6 +591,8 @@ pub struct ChannelsConfig {
     pub matrix: Option<MatrixConfig>,
     pub whatsapp: Option<WhatsAppConfig>,
     pub irc: Option<IrcConfig>,
+    #[serde(default)]
+    pub dingtalk: Option<DingTalkConfig>,
 }
 
 impl Default for ChannelsConfig {
@@ -605,6 +607,7 @@ impl Default for ChannelsConfig {
             matrix: None,
             whatsapp: None,
             irc: None,
+            dingtalk: None,
         }
     }
 }
@@ -696,6 +699,22 @@ pub struct IrcConfig {
 
 fn default_irc_port() -> u16 {
     6697
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DingTalkConfig {
+    /// DingTalk Application Key
+    pub app_key: String,
+    /// DingTalk Application Secret
+    pub app_secret: String,
+    /// DingTalk Agent ID
+    pub agent_id: i64,
+    /// Allowed user IDs (empty or ["*"] means allow all)
+    #[serde(default)]
+    pub allowed_users: Vec<String>,
+    /// Webhook secret for signature verification (optional)
+    #[serde(default)]
+    pub webhook_secret: Option<String>,
 }
 
 // ── Config impl ──────────────────────────────────────────────────
@@ -940,6 +959,7 @@ mod tests {
                 matrix: None,
                 whatsapp: None,
                 irc: None,
+                dingtalk: None,
             },
             memory: MemoryConfig::default(),
             tunnel: TunnelConfig::default(),
@@ -1325,6 +1345,80 @@ channel_id = "C123"
     fn channels_config_default_has_no_whatsapp() {
         let c = ChannelsConfig::default();
         assert!(c.whatsapp.is_none());
+    }
+
+    #[test]
+    fn channels_config_default_has_no_dingtalk() {
+        let c = ChannelsConfig::default();
+        assert!(c.dingtalk.is_none());
+    }
+
+    #[test]
+    fn dingtalk_config_serde() {
+        let dc = DingTalkConfig {
+            app_key: "dingtalk_app_key".into(),
+            app_secret: "dingtalk_secret".into(),
+            agent_id: 123456789,
+            allowed_users: vec!["user1".into(), "user2".into()],
+            webhook_secret: Some("webhook_secret".into()),
+        };
+        let json = serde_json::to_string(&dc).unwrap();
+        let parsed: DingTalkConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.app_key, "dingtalk_app_key");
+        assert_eq!(parsed.agent_id, 123456789);
+        assert_eq!(parsed.allowed_users.len(), 2);
+    }
+
+    #[test]
+    fn dingtalk_config_toml_roundtrip() {
+        let dc = DingTalkConfig {
+            app_key: "key".into(),
+            app_secret: "secret".into(),
+            agent_id: 123,
+            allowed_users: vec!["*".into()],
+            webhook_secret: None,
+        };
+        let toml_str = toml::to_string(&dc).unwrap();
+        let parsed: DingTalkConfig = toml::from_str(&toml_str).unwrap();
+        assert_eq!(parsed.app_key, "key");
+        assert_eq!(parsed.agent_id, 123);
+        assert_eq!(parsed.allowed_users, vec!["*"]);
+    }
+
+    #[test]
+    fn dingtalk_config_deserializes_without_allowed_users() {
+        let json = r#"{"app_key":"key","app_secret":"secret","agent_id":123}"#;
+        let parsed: DingTalkConfig = serde_json::from_str(json).unwrap();
+        assert!(parsed.allowed_users.is_empty());
+        assert!(parsed.webhook_secret.is_none());
+    }
+
+    #[test]
+    fn channels_config_with_dingtalk() {
+        let c = ChannelsConfig {
+            cli: true,
+            telegram: None,
+            discord: None,
+            slack: None,
+            webhook: None,
+            imessage: None,
+            matrix: None,
+            whatsapp: None,
+            irc: None,
+            dingtalk: Some(DingTalkConfig {
+                app_key: "key".into(),
+                app_secret: "secret".into(),
+                agent_id: 123,
+                allowed_users: vec!["user1".into()],
+                webhook_secret: None,
+            }),
+        };
+        let toml_str = toml::to_string_pretty(&c).unwrap();
+        let parsed: ChannelsConfig = toml::from_str(&toml_str).unwrap();
+        assert!(parsed.dingtalk.is_some());
+        let dt = parsed.dingtalk.unwrap();
+        assert_eq!(dt.app_key, "key");
+        assert_eq!(dt.agent_id, 123);
     }
 
     // ══════════════════════════════════════════════════════════
